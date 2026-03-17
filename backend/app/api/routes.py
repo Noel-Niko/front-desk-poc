@@ -124,9 +124,10 @@ async def get_handbook_page(
         raise HTTPException(status_code=404, detail="Handbook PDF not found")
 
     doc = pymupdf.open(pdf_path)
-    if page < 1 or page > len(doc):
+    page_count = len(doc)
+    if page < 1 or page > page_count:
         doc.close()
-        raise HTTPException(status_code=404, detail=f"Page {page} not found (handbook has {len(doc)} pages)")
+        raise HTTPException(status_code=404, detail=f"Page {page} not found (handbook has {page_count} pages)")
 
     pdf_page = doc[page - 1]  # 0-indexed
     pix = pdf_page.get_pixmap(dpi=150)

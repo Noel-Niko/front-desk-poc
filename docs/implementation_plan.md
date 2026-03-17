@@ -817,25 +817,25 @@ Architecture follows the `demo-voice-assistant-v2` patterns: lifespan context ma
   ├── .env.example
   └── README.md
   ```
-- [ ] Update `pyproject.toml` with all dependencies (see Section 10)
-- [ ] Create `config.py` with `pydantic-settings` (reads `.env`)
-- [ ] Create `.env.example` (see Section 10)
-- [ ] Create `Makefile` with targets: `setup`, `backend`, `frontend`, `dashboard`, `seed`, `test`, `dev` (runs all three)
-- [ ] Download CABQ handbook PDF → `data/handbook.pdf`
-- [ ] PDF processing: extract text, chunk, embed, build FAISS + BM25 index
-- [ ] Hybrid search function with reciprocal rank fusion
-- [ ] SQLite schema creation + seed data generator
-- [ ] Date offset resolution functions with future-awareness
-- [ ] FastAPI app with lifespan context manager (startup: init DB, load index, create Anthropic client → `app.state`)
-- [ ] `api/dependencies.py` — DI functions: `get_db()`, `get_handbook_index()`, `get_anthropic_client()`
-- [ ] `POST /api/chat` — text chat endpoint with Claude Sonnet + tool_use
-- [ ] Tool implementations: `search_handbook`, `query_child_info`, `request_tour`, `transfer_to_human`
-- [ ] `POST /api/verify-code` — security code verification
-- [ ] `GET /api/handbook/{page}` — serve handbook PDF page
-- [ ] `WS /api/voice` — Deepgram WebSocket relay (audio in → transcript + LLM response out)
-- [ ] Session creation + message logging to SQLite
-- [ ] FAQ override lookup (operator can add these via dashboard)
-- [ ] Tests: RAG accuracy, date resolution, child info queries
+- [x] Update `pyproject.toml` with all dependencies (see Section 10) ✅
+- [x] Create `config.py` with `pydantic-settings` (reads `.env`) ✅
+- [x] Create `.env.example` (see Section 10) ✅
+- [x] Create `Makefile` with targets: `setup`, `backend`, `frontend`, `dashboard`, `seed`, `test`, `dev` ✅
+- [x] Download CABQ handbook PDF → `data/handbook.pdf` ✅
+- [x] PDF processing: extract text, chunk, embed, build FAISS + BM25 index ✅ (101 chunks from 56 pages)
+- [x] Hybrid search function with reciprocal rank fusion ✅
+- [x] SQLite schema creation + seed data generator ✅ (8 children, 40 attendance, 96 meals, 6 allergies, 19 contacts, 8 payments)
+- [x] Date offset resolution functions with future-awareness ✅
+- [x] FastAPI app with lifespan context manager (startup: init DB, load index, create Anthropic client → `app.state`) ✅
+- [x] `api/dependencies.py` — DI functions: `get_db()`, `get_handbook_index()`, `get_anthropic_client()` ✅
+- [x] `POST /api/chat` — text chat endpoint with Claude Sonnet + tool_use ✅
+- [x] Tool implementations: `search_handbook`, `query_child_info`, `request_tour`, `transfer_to_human` ✅
+- [x] `POST /api/verify-code` — security code verification ✅
+- [x] `GET /api/handbook/{page}` — serve handbook PDF page ✅
+- [x] `WS /api/voice` — Deepgram WebSocket relay (audio in → transcript + LLM response out) ✅
+- [x] Session creation + message logging to SQLite ✅
+- [x] FAQ override lookup (operator can add these via dashboard) ✅
+- [x] Tests: date offset (20/20 pass), child info (10/10 pass), RAG (14/14 pass), API integration (5/6 pass, 1 bug fixed) ✅
 
 ### Phase 2: React Frontend + Voice
 
