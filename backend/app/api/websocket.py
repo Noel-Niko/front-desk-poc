@@ -1,15 +1,14 @@
-"""WebSocket endpoint for voice input via Deepgram.
+"""WebSocket endpoint for voice input via Deepgram + TTS output via Cartesia.
 
 Adapted from the working implementation in poc-deepgram
 (/Users/xnxn040/PycharmProjects/poc-deepgram/src/poc_deepgram/app.py).
 
-Key differences from the original broken implementation:
-  - Uses DeepgramSession (AsyncDeepgramClient + listen.v1.connect API)
-    instead of the old DeepgramClient + LiveOptions + .start() API
-  - Creates Deepgram session BEFORE entering the receive loop
-  - Has keepalive loop to prevent Deepgram timeout
-  - Proper graceful shutdown via session.close() in finally block
-  - Accumulates final transcript parts; processes with LLM on speech_final
+Key architecture:
+  - Uses DeepgramSession for STT (speech-to-text)
+  - Uses CartesiaTTSService for TTS (text-to-speech) when enabled
+  - TTS is toggled per-session via config message (tts_enabled, tts_speed)
+  - Protocol: tts_start JSON → binary PCM16 frames → tts_end JSON
+  - TTS errors never block text response delivery
 """
 
 import asyncio
@@ -48,9 +47,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
     settings = Settings()
     db: Database = websocket.app.state.db
     llm_service: LLMService = websocket.app.state.llm_service
+    tts_service = getattr(websocket.app.state, "tts_service", None)
 
     session_id: str | None = None
     session: DeepgramSession | None = None
+    tts_enabled: bool = False
+    tts_speed: str = "normal"
 
     # Gate: no Deepgram key → send error and close immediately
     if not settings.deepgram_api_key:
@@ -101,6 +103,15 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 "transferred": result["transferred"],
                 "transfer_reason": result["transfer_reason"],
             })
+
+            # TTS: synthesize and stream audio AFTER text response is sent
+            if tts_enabled and tts_service is not None:
+                try:
+                    await tts_service.read_response(
+                        result["message"], websocket, speed=tts_speed,
+                    )
+                except Exception:
+                    logger.exception("TTS synthesis failed (session: %s)", session_id)
         except Exception:
             logger.exception("Error processing utterance: %s", text[:100])
             try:
@@ -177,6 +188,8 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 msg = json.loads(data["text"])
                 if msg.get("type") == "config":
                     session_id = msg.get("session_id", str(uuid.uuid4()))
+                    tts_enabled = msg.get("tts_enabled", False)
+                    tts_speed = msg.get("tts_speed", "normal")
                     # Ensure session exists in DB
                     existing = await db.fetch_one(
                         "SELECT id FROM sessions WHERE id = ?", (session_id,)
