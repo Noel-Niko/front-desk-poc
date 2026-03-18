@@ -1,8 +1,40 @@
+import type React from 'react'
 import type { Message } from '@/types/api'
 import { handbookPageUrl } from '@/services/api'
 
 interface ChatMessageProps {
   message: Message
+}
+
+/** Render basic markdown inline: **bold**, *italic*, and line breaks. */
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+
+  lines.forEach((line, lineIdx) => {
+    if (lineIdx > 0) {
+      elements.push(<br key={`br-${lineIdx}`} />)
+    }
+
+    // Process inline markdown: **bold** and *italic*
+    const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
+    parts.forEach((part, partIdx) => {
+      const key = `${lineIdx}-${partIdx}`
+      if (part.startsWith('**') && part.endsWith('**')) {
+        elements.push(
+          <strong key={key} className="font-semibold">
+            {part.slice(2, -2)}
+          </strong>,
+        )
+      } else if (part.startsWith('*') && part.endsWith('*')) {
+        elements.push(<em key={key}>{part.slice(1, -1)}</em>)
+      } else {
+        elements.push(<span key={key}>{part}</span>)
+      }
+    })
+  })
+
+  return elements
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
@@ -21,7 +53,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             : 'bg-white text-blackout border border-barnacle rounded-bl-sm shadow-sm'
         }`}
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        <p className="whitespace-pre-wrap">{renderMarkdown(message.content)}</p>
         {message.citations.length > 0 && (
           <div className="mt-2 pt-2 border-t border-butterfly/30 flex flex-wrap gap-2">
             {message.citations.map((c) => (

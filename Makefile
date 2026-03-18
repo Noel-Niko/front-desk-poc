@@ -1,8 +1,9 @@
 .PHONY: setup backend frontend dashboard seed test dev clean
 
-# Setup: install deps, download handbook, build index, seed database
+# Setup: install all deps, download handbook, build index, seed database
 setup:
-	uv sync
+	uv sync --extra dev
+	cd frontend && npm install --legacy-peer-deps
 	uv run python -m backend.scripts.download_handbook
 	uv run python -m backend.scripts.build_index
 	uv run python -m backend.app.db.seed
@@ -23,9 +24,10 @@ dashboard:
 seed:
 	uv run python -m backend.app.db.seed
 
-# Run tests
+# Run all tests (backend + frontend)
 test:
-	uv run pytest backend/tests/ -v
+	uv run python -m pytest backend/tests/ -v
+	cd frontend && npm test
 
 # Run all three services (backend + frontend + dashboard)
 dev:

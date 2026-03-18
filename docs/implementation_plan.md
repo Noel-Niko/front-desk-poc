@@ -7,9 +7,9 @@
 | Phase | Status |
 |-------|--------|
 | Phase 1: Project Setup + Backend Core | **COMPLETE** |
-| Phase 2: React Frontend + Voice | **IN PROGRESS** |
+| Phase 2: React Frontend + Voice | **COMPLETE** |
 | Phase 3: Operator Dashboard | **COMPLETE** |
-| Phase 4: Integration + Demo Prep | **IN PROGRESS** (README, demo questions, smoke test done) |
+| Phase 4: Integration + Demo Prep | **COMPLETE** |
 
 ### Tier 2: Full Implementation (extends Tier 1)
 
@@ -847,12 +847,13 @@ Architecture follows the `demo-voice-assistant-v2` patterns: lifespan context ma
 - [x] Citation rendering in assistant messages (linked page numbers) ✅
 - [x] Reference panel: handbook citations list + child data attribution cards ✅
 - [x] Text input bar with send button + Enter key submit ✅
-- [ ] Deepgram WebSocket integration for voice input:
-  - Mic permission request + audio capture
+- [x] Deepgram WebSocket integration for voice input ✅ (6 tests):
+  - Mic permission request + audio capture (useVoice hook)
   - WebSocket connection to `WS /api/voice`
   - Interim transcript display (gray text, updating)
   - Final transcript display (black text, sent to LLM)
-- [ ] Fallback: browser `SpeechRecognition` API if no Deepgram key
+  - DeepgramSession service adapted from poc-deepgram (AsyncDeepgramClient + listen.v1.connect + keepalive)
+- [ ] Fallback: browser `SpeechRecognition` API if no Deepgram key (frontend hook ready, backend returns error JSON)
 - [x] Security code entry modal (4-digit PIN input with auto-submit) ✅
 - [x] Static owl emoji as avatar in chat bubbles (Lottie animation is Tier 2) ✅
 - [x] Loading states (typing indicator with bouncing dots) ✅
@@ -892,8 +893,10 @@ Following the `demo-voice-assistant-v2` dashboard pattern: separate FastAPI app 
 - [x] Demo questions file with all security codes (docs/demo_questions.md) ✅
 - [x] End-to-end smoke test ✅: session creation, verify code (Sofia 7291), chat (hours query → Claude responds with handbook data), handbook page PNG, dashboard stats/sessions all working
 - [x] Verify operator dashboard shows session data from live use ✅ (3 sessions, 6 messages, tool_usage visible)
-- [ ] Record < 2 min demo video (or write < 1 page explanation doc)
-- [ ] Final cleanup: remove debug prints, check error messages
+- [x] Explanation document written (docs/explanation.md) ✅
+- [x] Final cleanup: removed Vite boilerplate, fixed TypeScript build, strengthened LLM system prompt to force tool use, added markdown rendering ✅
+- [x] Voice input hook (useVoice) built with AudioContext + WebSocket integration ✅
+- [x] Makefile updated: setup installs both Python and frontend deps, test runs both suites ✅
 
 ---
 
@@ -912,8 +915,109 @@ Following the `demo-voice-assistant-v2` dashboard pattern: separate FastAPI app 
 | **sentence-transformers for embeddings** (not OpenAI) | Fully local — no external API dependency, no per-query cost, no rate limits. The all-MiniLM-L6-v2 model is 90MB and runs in milliseconds. Trade-off: pulls in PyTorch (~500MB), but acceptable for a POC. |
 | **Tailwind CSS v4 with @theme** | Utility-first CSS eliminates the need for custom CSS files. BrightWheel brand colors defined as CSS custom properties via @theme directive. v4 uses the new Vite plugin (no PostCSS config needed). |
 | **Vite proxy to backend** | Frontend (:5173) proxies /api/* to backend (:8000). Avoids CORS issues during development. In production, a reverse proxy would handle this. |
-| **TDD approach** | Tests written before implementation code. Ensures all components have test coverage from day one. Backend: 61 tests (pytest). Frontend: 25 tests (Vitest + Testing Library). |
+| **TDD approach** | Tests written before implementation code. Ensures all components have test coverage from day one. Backend: 67 tests (pytest). Frontend: 29 tests (Vitest + Testing Library). |
 | **Voice input deferred to Tier 2** | Text-based chat demonstrates all core functionality. Voice adds complexity (Deepgram WebSocket, AudioContext, browser permissions) without changing the LLM/RAG logic. Clean separation means voice can be added without refactoring. |
+| **DeepgramSession class** (extracted service) | Adapted from the working poc-deepgram implementation. Encapsulates connection lifecycle, keepalive loop, and graceful shutdown. Injected via callback pattern — decouples Deepgram protocol from WebSocket handler logic. |
+| **AsyncDeepgramClient + listen.v1.connect()** (not LiveOptions) | Deepgram SDK v6 has two APIs: the old `DeepgramClient` + `LiveOptions` + `.start()` pattern, and the new `AsyncDeepgramClient` + `listen.v1.connect()` + context manager pattern. The old API caused immediate disconnection. The new API is the one used in all working reference implementations. |
+| **10s keepalive loop** (Deepgram session) | Deepgram disconnects after ~30s of no audio. A background task sends `send_keep_alive()` every 10s to prevent timeout during natural conversation pauses. Learned from poc-deepgram. |
+| **Event handlers before start_listening()** | Deepgram SDK requires registering `.on(EventType.MESSAGE, ...)` handlers BEFORE calling `start_listening()`. If reversed, early transcript events are missed. This ordering requirement is not documented in the SDK docs. |
+| **speech_final for utterance boundary** | Deepgram sends multiple `is_final=True` results per utterance (each is a finalized partial). Only `speech_final=True` signals the true end of an utterance. We accumulate all final parts and join them when speech_final fires, then send to the LLM. |
+
+---
+
+## Voice WebSocket Bug: Root Cause Analysis & Fix
+
+### Bug Description
+The `WS /api/voice` endpoint connected successfully but immediately closed. Browser logs showed three rapid connection attempts, each closing instantly.
+
+### Root Causes (Two Issues)
+
+**1. Environment variable name mismatch (primary cause of immediate close)**
+
+| File | Expected Variable | Value in .env |
+|------|------------------|---------------|
+| `config.py` | `deepgram_api_key` → reads `DEEPGRAM_API_KEY` | `DEEPGRAM_KEY=3035b...` (wrong name) |
+
+Because pydantic-settings maps `deepgram_api_key` to `DEEPGRAM_API_KEY`, and the .env had `DEEPGRAM_KEY`, the key was never loaded. `settings.deepgram_api_key` was always `""`. The very first check in the WebSocket handler — `if not settings.deepgram_api_key` — was true, so it sent an error JSON and closed immediately.
+
+**Fix:** Renamed `DEEPGRAM_KEY` to `DEEPGRAM_API_KEY` in `.env`.
+
+**2. Wrong Deepgram SDK API (would have caused failure even with correct key)**
+
+The original `websocket.py` used the **old** Deepgram SDK pattern:
+```python
+# BROKEN — old SDK API
+from deepgram import DeepgramClient, LiveOptions, LiveTranscriptionEvents
+deepgram = DeepgramClient(api_key)
+dg_connection = deepgram.listen.asyncwebsocket.v("1")
+dg_connection.on(LiveTranscriptionEvents.Transcript, handler)
+options = LiveOptions(model="nova-3", ...)
+if not await dg_connection.start(options):
+    # error...
+```
+
+The **working** pattern from poc-deepgram (Deepgram SDK v6):
+```python
+# WORKING — new SDK API
+from deepgram import AsyncDeepgramClient
+from deepgram.core.events import EventType
+client = AsyncDeepgramClient(api_key=api_key)
+ctx_manager = client.listen.v1.connect(model="nova-3", encoding="linear16", ...)
+connection = await ctx_manager.__aenter__()
+connection.on(EventType.MESSAGE, handler)  # handlers BEFORE start_listening
+connection.on(EventType.ERROR, error_handler)
+listener_task = asyncio.create_task(connection.start_listening())
+keepalive_task = asyncio.create_task(keepalive_loop())
+```
+
+Key differences:
+- `AsyncDeepgramClient` (async) instead of `DeepgramClient` (sync)
+- `listen.v1.connect()` with keyword args instead of `LiveOptions` object
+- Context manager pattern (`__aenter__`/`__aexit__`) instead of `.start()`
+- `start_listening()` as a background task (blocks until close)
+- **Keepalive loop** — sends pings every 10s to prevent Deepgram timeout
+- **Graceful shutdown** — cancel keepalive → send_close_stream → exit ctx → cancel listener
+
+**Fix:** Created `backend/app/services/deepgram_session.py` adapted from poc-deepgram, rewrote `websocket.py` to use it.
+
+### Best Practices Learned from poc-deepgram
+
+| Practice | Why |
+|----------|-----|
+| **One DeepgramSession per browser connection** | Prevents audio stream mixing; independent error handling per client |
+| **Register event handlers BEFORE start_listening()** | Avoids missing early transcript events; ordering requirement not in SDK docs |
+| **10s keepalive loop** | Deepgram times out after ~30s of silence; keep-alive prevents disconnection |
+| **Graceful shutdown order** | Cancel keepalive → send_close_stream → exit context → cancel listener. Order prevents resource leaks and allows Deepgram to flush final results |
+| **No audio buffering** | Forward audio immediately via `send_media()` to minimize transcription latency |
+| **speech_final for utterance detection** | Multiple `is_final=True` events per utterance; only `speech_final=True` signals true end |
+| **Callback injection** | `on_transcript` callback decouples Deepgram protocol from WebSocket response logic |
+| **Non-blocking LLM dispatch** | LLM processing runs via `asyncio.create_task()` so the Deepgram listener isn't blocked during multi-second LLM calls. Without this, only the first utterance works. |
+| **Error isolation in message handler** | `_handle_message` wrapped in try/except so callback errors don't kill the `listener_task`. Without this, one bad LLM call stops all future transcript processing. |
+
+### Bug Fix: Only First Utterance Recognized
+
+**Symptom:** Voice input worked for the first utterance, then stopped responding to subsequent speech.
+
+**Root Cause:** The `on_transcript` callback directly awaited `llm_service.chat()` (a multi-second operation) inside the Deepgram SDK's message dispatch chain. This blocked the `listener_task` from processing any further transcript events. If the LLM call threw an exception, it also killed the listener task entirely.
+
+**Fix (two changes):**
+1. **`websocket.py`:** Moved LLM processing to `asyncio.create_task(process_utterance(text))` so the callback returns immediately. The `on_transcript` callback now only forwards transcript JSON and dispatches LLM work to a background task.
+2. **`deepgram_session.py`:** Wrapped `_handle_message` in try/except to prevent callback errors from killing the listener task.
+
+**Lesson:** Event handler callbacks that are called from SDK dispatch loops must be lightweight. Any heavy I/O (LLM calls, slow DB queries) should be dispatched to a separate task.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `.env` | Renamed `DEEPGRAM_KEY` → `DEEPGRAM_API_KEY` |
+| `backend/app/services/deepgram_session.py` | **NEW** — DeepgramSession class adapted from poc-deepgram |
+| `backend/app/api/websocket.py` | **REWRITTEN** — Uses DeepgramSession instead of inline old SDK code |
+| `backend/tests/test_voice_websocket.py` | **NEW** — 6 tests: no-API-key error, config message handling, audio forwarding, SDK API verification, graceful shutdown |
+
+### Test Results
+- 6 new voice WebSocket tests pass
+- Full suite: 67 backend tests pass (61 existing + 6 new)
 
 ---
 

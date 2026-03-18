@@ -12,6 +12,8 @@ interface UseChatReturn {
   send: (text: string) => Promise<void>
   submitCode: (code: string) => Promise<{ verified: boolean; error: string | null }>
   initSession: () => Promise<void>
+  addMessage: (msg: Message) => void
+  addCitations: (newCitations: Citation[]) => void
 }
 
 export function useChat(): UseChatReturn {
@@ -114,5 +116,13 @@ export function useChat(): UseChatReturn {
     [sessionId],
   )
 
-  return { messages, citations, sessionId, childName, loading, error, send, submitCode, initSession }
+  const addMessage = useCallback((msg: Message) => {
+    setMessages((prev) => [...prev, msg])
+  }, [])
+
+  const addCitations = useCallback((newCitations: Citation[]) => {
+    setCitations((prev) => [...prev, ...newCitations])
+  }, [])
+
+  return { messages, citations, sessionId, childName, loading, error, send, submitCode, initSession, addMessage, addCitations }
 }
