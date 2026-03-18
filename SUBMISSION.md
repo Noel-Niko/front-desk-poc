@@ -17,7 +17,7 @@ A voice-and-text AI front desk for childcare centers. Parents ask questions via 
 |---|------------------------------------------------------|
 | Text — General questions | [youtu.be/_fap9GElVeI](https://youtu.be/_fap9GElVeI) |
 | Text — Authenticated child queries | [youtu.be/SCRv0cOu8xg](https://youtu.be/SCRv0cOu8xg) |             |
-| Voice — Authenticated child queries | https://youtu.be/C9LLUnbOzUQ                         |
+| Voice — Authenticated child queries | https://youtu.be/qnpO1RSpNmw                        |
 
 ## Try It — Demo Script
 
