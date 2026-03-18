@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  /* BrightWheel Brand Colors */
+  --color-blackout: #1E2549;
+  --color-blueberry: #37458A;
+  --color-blurple: #5463D6;
+  --color-barney: #6476FF;
+  --color-butterfly: #B1BAFF;
+  --color-barnacle: #EEF1FF;
+  --color-bubble: #F7F9FF;
+  --color-sangria: #A40C31;
+
+  /* BrightWheel Wheel Accent Colors */
+  --color-bw-green: #4CAF50;
+  --color-bw-teal: #26C6DA;
+  --color-bw-purple: #7C4DFF;
+  --color-bw-pink: #FF4081;
+  --color-bw-orange: #FF9800;
+  --color-bw-red: #F44336;
+
+  /* Font */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bubble);
+  color: var(--color-blackout);
+  margin: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-barnacle);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-butterfly);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-blurple);
+}
