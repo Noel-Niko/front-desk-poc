@@ -16,6 +16,8 @@ from backend.app.models.schemas import (
     ChatRequest,
     ChatResponse,
     Citation,
+    EndSessionResponse,
+    RateSessionRequest,
     TourRequestBody,
     VerifyCodeRequest,
     VerifyCodeResponse,
@@ -172,3 +174,46 @@ async def create_session(
         (session_id, datetime.now().isoformat()),
     )
     return {"session_id": session_id}
+
+
+@router.post("/sessions/{session_id}/rate")
+async def rate_session(
+    session_id: str,
+    request: RateSessionRequest,
+    db: Database = Depends(get_db),
+) -> dict:
+    """Rate a completed session (1-5 stars with optional feedback)."""
+    # Validate rating range
+    if request.rating < 1 or request.rating > 5:
+        raise HTTPException(status_code=422, detail="Rating must be between 1 and 5")
+
+    # Verify session exists
+    session = await db.fetch_one(
+        "SELECT id FROM sessions WHERE id = ?", (session_id,)
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    await db.execute(
+        "UPDATE sessions SET rating = ?, rating_feedback = ? WHERE id = ?",
+        (request.rating, request.feedback, session_id),
+    )
+    return {"status": "ok"}
+
+
+@router.post("/sessions/{session_id}/end", response_model=EndSessionResponse)
+async def end_session(
+    session_id: str,
+    llm: LLMService = Depends(get_llm_service),
+    db: Database = Depends(get_db),
+) -> EndSessionResponse:
+    """End a session, generating a summary via Claude Haiku."""
+    # Verify session exists
+    session = await db.fetch_one(
+        "SELECT id FROM sessions WHERE id = ?", (session_id,)
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    result = await llm.end_session(session_id)
+    return EndSessionResponse(summary=result["summary"])

@@ -16,6 +16,9 @@ dependencies = [
     # Voice input
     "deepgram-sdk>=3.0.0",
 
+    # Voice output / TTS
+    "cartesia[websockets]>=3.0.0",
+
     # RAG pipeline
     "pymupdf>=1.24.0",
     "faiss-cpu>=1.8.0",

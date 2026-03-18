@@ -171,6 +171,38 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   .msg-user { background: var(--blurple); color: white; margin-left: auto; border-bottom-right-radius: 4px; }
   .msg-assistant { background: var(--barnacle); color: var(--blackout); border-bottom-left-radius: 4px; }
   .msg-label { font-size: 11px; color: var(--blueberry); margin-bottom: 2px; }
+
+  /* Rating stars */
+  .stars { color: #f59e0b; letter-spacing: 2px; }
+  .stars-dim { color: #d1d5db; letter-spacing: 2px; }
+
+  /* Rating distribution bar */
+  .rating-bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
+  .rating-bar-label { width: 20px; text-align: right; color: var(--blueberry); }
+  .rating-bar-track { flex: 1; height: 20px; background: var(--barnacle); border-radius: 4px; overflow: hidden; }
+  .rating-bar-fill { height: 100%; background: var(--blurple); border-radius: 4px; transition: width 0.3s; }
+  .rating-bar-count { width: 30px; font-size: 12px; color: var(--blueberry); }
+
+  /* Filters */
+  .filters { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .filters select, .filters input {
+    padding: 6px 10px;
+    border: 1px solid var(--barnacle);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--white);
+  }
+  .filters label { font-size: 12px; color: var(--blueberry); }
+
+  /* Alert card */
+  .alert-card {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .alert-card .alert-rating { font-weight: 700; color: var(--sangria); }
 </style>
 </head>
 <body>
@@ -185,12 +217,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   <div class="tabs">
     <button class="tab active" data-tab="sessions">Sessions</button>
+    <button class="tab" data-tab="analytics">Analytics</button>
     <button class="tab" data-tab="struggles">Struggles</button>
     <button class="tab" data-tab="faq">FAQ Overrides</button>
     <button class="tab" data-tab="tours">Tour Requests</button>
   </div>
 
   <div id="sessions" class="panel active"></div>
+  <div id="analytics" class="panel"></div>
   <div id="struggles" class="panel"></div>
   <div id="faq" class="panel"></div>
   <div id="tours" class="panel"></div>
@@ -219,33 +253,66 @@ document.querySelectorAll('.tab').forEach(btn => {
 
 // ── Load all data ──
 async function loadAll() {
-  await Promise.all([loadStats(), loadSessions(), loadStruggles(), loadFAQ(), loadTours()]);
+  await Promise.all([loadStats(), loadSessions(), loadStruggles(), loadFAQ(), loadTours(), loadAnalytics()]);
+}
+
+function renderStars(rating) {
+  const full = Math.round(rating);
+  return '<span class="stars">' + '★'.repeat(full) + '</span><span class="stars-dim">' + '★'.repeat(5 - full) + '</span>';
 }
 
 async function loadStats() {
   const data = await fetch(API + '/api/stats').then(r => r.json());
+  const ratingDisplay = data.rating_count > 0
+    ? `${renderStars(data.avg_rating)} ${data.avg_rating}`
+    : '<span style="color:#888">No ratings</span>';
   document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card"><div class="label">Total Sessions</div><div class="value">${data.total_sessions}</div></div>
     <div class="kpi-card"><div class="label">Total Messages</div><div class="value">${data.total_messages}</div></div>
-    <div class="kpi-card"><div class="label">Transfers</div><div class="value">${data.transferred_count}</div></div>
+    <div class="kpi-card"><div class="label">Avg Rating (${data.rating_count})</div><div class="value">${ratingDisplay}</div></div>
     <div class="kpi-card"><div class="label">Transfer Rate</div><div class="value ${data.transfer_rate > 20 ? 'warning' : ''}">${data.transfer_rate}%</div></div>
   `;
 }
 
 async function loadSessions() {
-  const data = await fetch(API + '/api/sessions').then(r => r.json());
-  const rows = data.map(s => `
+  // Build query params from filters
+  const params = new URLSearchParams();
+  const minRating = document.getElementById('filter-min-rating')?.value;
+  const transferred = document.getElementById('filter-transferred')?.checked;
+  if (minRating && minRating !== '') params.set('min_rating', minRating);
+  if (transferred) params.set('transferred_only', 'true');
+  const qs = params.toString() ? '?' + params.toString() : '';
+
+  const data = await fetch(API + '/api/sessions' + qs).then(r => r.json());
+  const rows = data.map(s => {
+    const ratingHtml = s.rating ? renderStars(s.rating) : '<span style="color:#ccc">—</span>';
+    return `
     <tr onclick="openSession('${s.id}')" style="cursor:pointer">
       <td>${new Date(s.started_at).toLocaleString()}</td>
       <td>${s.input_mode || 'text'}</td>
+      <td>${ratingHtml}</td>
       <td>${s.security_code_used ? '🔐 ' + s.security_code_used : '—'}</td>
       <td>${s.transferred_to_human ? '<span class="badge badge-transfer">Transferred</span>' : '<span class="badge badge-ok">OK</span>'}</td>
-      <td>${s.transfer_reason || '—'}</td>
     </tr>
-  `).join('');
+  `}).join('');
   document.getElementById('sessions').innerHTML = `
+    <div class="filters">
+      <label>Min rating:
+        <select id="filter-min-rating" onchange="loadSessions()">
+          <option value="">All</option>
+          <option value="1" ${minRating==='1'?'selected':''}>1+</option>
+          <option value="2" ${minRating==='2'?'selected':''}>2+</option>
+          <option value="3" ${minRating==='3'?'selected':''}>3+</option>
+          <option value="4" ${minRating==='4'?'selected':''}>4+</option>
+          <option value="5" ${minRating==='5'?'selected':''}>5</option>
+        </select>
+      </label>
+      <label>
+        <input type="checkbox" id="filter-transferred" onchange="loadSessions()" ${transferred?'checked':''}> Transferred only
+      </label>
+    </div>
     <table>
-      <thead><tr><th>Started</th><th>Mode</th><th>Code</th><th>Status</th><th>Transfer Reason</th></tr></thead>
+      <thead><tr><th>Started</th><th>Mode</th><th>Rating</th><th>Code</th><th>Status</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#888">No sessions yet</td></tr>'}</tbody>
     </table>
   `;
@@ -317,7 +384,7 @@ async function openSession(id) {
   document.getElementById('modal-title').textContent = 'Session: ' + id.substring(0, 8) + '...';
   const msgs = (data.messages || []).map(m => `
     <div style="display:flex;flex-direction:column;${m.role === 'user' ? 'align-items:flex-end' : 'align-items:flex-start'}">
-      <div class="msg-label">${m.role === 'user' ? 'Parent' : 'Ollie'}${m.tool_used ? ' (used: ' + m.tool_used + ')' : ''}</div>
+      <div class="msg-label">${m.role === 'user' ? 'Parent' : 'Ms. Olivia'}${m.tool_used ? ' (used: ' + m.tool_used + ')' : ''}</div>
       <div class="msg-bubble ${m.role === 'user' ? 'msg-user' : 'msg-assistant'}">${m.content}</div>
     </div>
   `).join('');
@@ -350,6 +417,64 @@ async function deleteFAQ(id) {
   if (!confirm('Delete this FAQ override?')) return;
   await fetch(API + '/api/faq-overrides/' + id, {method: 'DELETE'});
   loadFAQ();
+}
+
+// ── Analytics panel ──
+async function loadAnalytics() {
+  const [dist, citations, lowRating] = await Promise.all([
+    fetch(API + '/api/rating-distribution').then(r => r.json()),
+    fetch(API + '/api/citation-frequency').then(r => r.json()),
+    fetch(API + '/api/low-rating-sessions').then(r => r.json()),
+  ]);
+
+  // Rating distribution
+  const maxCount = Math.max(...dist.map(d => d.count), 1);
+  const distBars = [5,4,3,2,1].map(rating => {
+    const entry = dist.find(d => d.rating === rating);
+    const count = entry ? entry.count : 0;
+    const pct = (count / maxCount * 100).toFixed(0);
+    return `<div class="rating-bar-row">
+      <div class="rating-bar-label">${rating}★</div>
+      <div class="rating-bar-track"><div class="rating-bar-fill" style="width:${pct}%"></div></div>
+      <div class="rating-bar-count">${count}</div>
+    </div>`;
+  }).join('');
+
+  // Citation frequency
+  const citationRows = citations.slice(0, 10).map(c => `
+    <tr><td>Page ${c.page}</td><td>${c.count} citations</td></tr>
+  `).join('');
+
+  // Low rating alerts
+  const alerts = lowRating.map(s => `
+    <div class="alert-card">
+      <div><span class="alert-rating">${s.rating}★</span> — ${new Date(s.started_at).toLocaleString()}</div>
+      ${s.rating_feedback ? `<div style="margin-top:4px;font-size:13px;color:#555">"${s.rating_feedback}"</div>` : ''}
+      <button class="btn btn-sm" style="margin-top:8px" onclick="openSession('${s.id}')">View session</button>
+    </div>
+  `).join('');
+
+  document.getElementById('analytics').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div>
+        <h3 style="font-size:14px;margin-bottom:12px;color:var(--blueberry)">Rating Distribution</h3>
+        <div style="background:white;padding:16px;border-radius:12px;border:1px solid var(--barnacle)">
+          ${dist.length > 0 ? distBars : '<p style="color:#888;text-align:center">No ratings yet</p>'}
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:14px;margin-bottom:12px;color:var(--blueberry)">Most Cited Pages</h3>
+        <table>
+          <thead><tr><th>Page</th><th>Citations</th></tr></thead>
+          <tbody>${citationRows || '<tr><td colspan="2" style="text-align:center;color:#888">No citations yet</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    <div style="margin-top:24px">
+      <h3 style="font-size:14px;margin-bottom:12px;color:var(--sangria)">Low Rating Sessions (≤2★)</h3>
+      ${alerts || '<p style="color:#888">No low-rating sessions. Great job!</p>'}
+    </div>
+  `;
 }
 
 // ── Auto-refresh ──

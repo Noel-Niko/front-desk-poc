@@ -12,14 +12,41 @@ class DashboardService:
     def __init__(self, db: Database) -> None:
         self._db = db
 
-    async def list_sessions(self) -> list[dict]:
-        """List all sessions ordered by most recent first."""
+    async def list_sessions(
+        self,
+        min_rating: int | None = None,
+        transferred_only: bool = False,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ) -> list[dict]:
+        """List sessions with optional filters, ordered by most recent first."""
+        conditions = []
+        params: list = []
+
+        if min_rating is not None:
+            conditions.append("rating >= ?")
+            params.append(min_rating)
+        if transferred_only:
+            conditions.append("transferred_to_human = 1")
+        if date_from is not None:
+            conditions.append("started_at >= ?")
+            params.append(date_from)
+        if date_to is not None:
+            conditions.append("started_at <= ?")
+            params.append(date_to)
+
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
+
         rows = await self._db.fetch_all(
-            """SELECT id, started_at, ended_at, input_mode,
+            f"""SELECT id, started_at, ended_at, input_mode,
                       transferred_to_human, transfer_reason,
-                      security_code_used, child_id
+                      security_code_used, child_id, rating, rating_feedback
                FROM sessions
-               ORDER BY started_at DESC"""
+               {where_clause}
+               ORDER BY started_at DESC""",
+            tuple(params),
         )
         return [dict(r) for r in rows]
 
@@ -68,6 +95,10 @@ class DashboardService:
                ORDER BY cnt DESC"""
         )
 
+        rating_stats = await self._db.fetch_one(
+            "SELECT AVG(rating) as avg_rating, COUNT(rating) as rating_count FROM sessions WHERE rating IS NOT NULL"
+        )
+
         total = total_sessions["cnt"] if total_sessions else 0
         xfer = transferred["cnt"] if transferred else 0
 
@@ -77,6 +108,8 @@ class DashboardService:
             "transferred_count": xfer,
             "transfer_rate": round(xfer / total * 100, 1) if total > 0 else 0,
             "tool_usage": [dict(r) for r in tool_usage],
+            "avg_rating": round(rating_stats["avg_rating"], 1) if rating_stats and rating_stats["avg_rating"] else 0,
+            "rating_count": rating_stats["rating_count"] if rating_stats else 0,
         }
 
     async def get_struggles(self) -> list[dict]:
@@ -89,6 +122,49 @@ class DashboardService:
                WHERE s.transferred_to_human = 1
                GROUP BY s.id
                ORDER BY s.started_at DESC"""
+        )
+        return [dict(r) for r in rows]
+
+    async def get_rating_distribution(self) -> list[dict]:
+        """Get count of sessions per rating value (1-5)."""
+        rows = await self._db.fetch_all(
+            """SELECT rating, COUNT(*) as count
+               FROM sessions
+               WHERE rating IS NOT NULL
+               GROUP BY rating
+               ORDER BY rating"""
+        )
+        return [dict(r) for r in rows]
+
+    async def get_citation_frequency(self) -> list[dict]:
+        """Get most frequently cited handbook pages."""
+        rows = await self._db.fetch_all(
+            "SELECT citations FROM messages WHERE citations IS NOT NULL"
+        )
+        page_counts: dict[int, int] = {}
+        for row in rows:
+            try:
+                citations = json.loads(row["citations"])
+                for c in citations:
+                    page = c.get("page")
+                    if page is not None:
+                        page_counts[page] = page_counts.get(page, 0) + 1
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        result = [
+            {"page": page, "count": count}
+            for page, count in sorted(page_counts.items(), key=lambda x: -x[1])
+        ]
+        return result
+
+    async def get_low_rating_sessions(self) -> list[dict]:
+        """Get sessions with rating <= 2 (needs attention)."""
+        rows = await self._db.fetch_all(
+            """SELECT id, started_at, rating, rating_feedback, transfer_reason
+               FROM sessions
+               WHERE rating IS NOT NULL AND rating <= 2
+               ORDER BY started_at DESC"""
         )
         return [dict(r) for r in rows]
 

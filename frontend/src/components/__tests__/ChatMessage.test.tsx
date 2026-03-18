@@ -29,7 +29,7 @@ describe('ChatMessage', () => {
 
   it('renders assistant message with owl label', () => {
     render(<ChatMessage message={baseMessage} />)
-    expect(screen.getByText('Ollie')).toBeInTheDocument()
+    expect(screen.getByText('Ms. Olivia')).toBeInTheDocument()
   })
 
   it('renders user message with You label', () => {
