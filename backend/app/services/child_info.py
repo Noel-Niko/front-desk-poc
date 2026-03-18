@@ -1,6 +1,5 @@
 """Child-specific data queries with date resolution and attribution."""
 
-import json
 from datetime import datetime
 
 from backend.app.db.database import Database
@@ -24,9 +23,7 @@ async def query_child_info(
     info_type: attendance | meals | allergies | emergency_contacts | payments | field_trips | overview
     """
     # Get child basic info
-    child = await db.fetch_one(
-        "SELECT * FROM children WHERE id = ?", (child_id,)
-    )
+    child = await db.fetch_one("SELECT * FROM children WHERE id = ?", (child_id,))
     if not child:
         return {"error": f"Child with id {child_id} not found"}
 
@@ -68,11 +65,17 @@ async def _query_attendance(db: Database, child_id: int, day_offset: int) -> lis
         {
             "date": format_date_natural(row["day_offset"]),
             "status": row["status"],
-            "check_in_time": format_time_natural(row["check_in_time"]) if row["check_in_time"] else None,
-            "check_out_time": format_time_natural(row["check_out_time"]) if row["check_out_time"] else "still here",
+            "check_in_time": format_time_natural(row["check_in_time"])
+            if row["check_in_time"]
+            else None,
+            "check_out_time": format_time_natural(row["check_out_time"])
+            if row["check_out_time"]
+            else "still here",
             "checked_in_by": row["checked_in_by"],
             "checked_out_by": row["checked_out_by"],
-            "temporal_hint": temporal_hint(row["day_offset"], row["check_in_time"]) if row["check_in_time"] else "past",
+            "temporal_hint": temporal_hint(row["day_offset"], row["check_in_time"])
+            if row["check_in_time"]
+            else "past",
         }
         for row in rows
     ]
@@ -96,9 +99,7 @@ async def _query_meals(db: Database, child_id: int, day_offset: int) -> list[dic
 
 
 async def _query_allergies(db: Database, child_id: int) -> list[dict]:
-    rows = await db.fetch_all(
-        "SELECT * FROM allergies WHERE child_id = ?", (child_id,)
-    )
+    rows = await db.fetch_all("SELECT * FROM allergies WHERE child_id = ?", (child_id,))
     return [
         {
             "allergy_type": row["allergy_type"],
@@ -127,31 +128,39 @@ async def _query_emergency_contacts(db: Database, child_id: int, child) -> list[
     ]
     # Include the child's doctor info
     if child["doctor_name"]:
-        contacts.append({
-            "contact_name": child["doctor_name"],
-            "relationship": "Pediatrician",
-            "phone": child["doctor_phone"] or "N/A",
-            "is_primary": False,
-        })
+        contacts.append(
+            {
+                "contact_name": child["doctor_name"],
+                "relationship": "Pediatrician",
+                "phone": child["doctor_phone"] or "N/A",
+                "is_primary": False,
+            }
+        )
     return contacts
 
 
 async def _query_payments(db: Database, child_id: int) -> list[dict]:
-    row = await db.fetch_one(
-        "SELECT * FROM payments WHERE child_id = ?", (child_id,)
-    )
+    row = await db.fetch_one("SELECT * FROM payments WHERE child_id = ?", (child_id,))
     if not row:
         return []
     due_date = resolve_payment_due_date(row["next_payment_days_ahead"])
-    last_date = resolve_date(row["last_payment_date_offset"]) if row["last_payment_date_offset"] else None
-    return [{
-        "current_balance": f"${row['current_balance']:.2f}",
-        "next_payment_due": due_date.strftime("%A, %B %d, %Y"),
-        "last_payment_amount": f"${row['last_payment_amount']:.2f}" if row["last_payment_amount"] else None,
-        "last_payment_date": last_date.strftime("%B %d, %Y") if last_date else None,
-        "fee_type": row["fee_type"],
-        "weekly_fee": f"${row['weekly_fee']:.2f}",
-    }]
+    last_date = (
+        resolve_date(row["last_payment_date_offset"])
+        if row["last_payment_date_offset"]
+        else None
+    )
+    return [
+        {
+            "current_balance": f"${row['current_balance']:.2f}",
+            "next_payment_due": due_date.strftime("%A, %B %d, %Y"),
+            "last_payment_amount": f"${row['last_payment_amount']:.2f}"
+            if row["last_payment_amount"]
+            else None,
+            "last_payment_date": last_date.strftime("%B %d, %Y") if last_date else None,
+            "fee_type": row["fee_type"],
+            "weekly_fee": f"${row['weekly_fee']:.2f}",
+        }
+    ]
 
 
 async def _query_field_trips(db: Database, child, day_offset: int) -> list[dict]:
@@ -195,7 +204,11 @@ async def _query_overview(db: Database, child_id: int, child) -> dict:
         "classroom": child["classroom"],
         "teacher": f"{child['teacher_name']}, {child['teacher_role']}, {child['room_number']}",
         "today_status": att["status"] if att else "no record for today",
-        "check_in_time": format_time_natural(att["check_in_time"]) if att and att["check_in_time"] else None,
-        "allergies": [r["description"] for r in allergy_rows] if allergy_rows else ["None on file"],
+        "check_in_time": format_time_natural(att["check_in_time"])
+        if att and att["check_in_time"]
+        else None,
+        "allergies": [r["description"] for r in allergy_rows]
+        if allergy_rows
+        else ["None on file"],
         "balance": f"${payment['current_balance']:.2f}" if payment else "N/A",
     }

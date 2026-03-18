@@ -35,19 +35,27 @@ class TestHandbookIndexBuild:
 
 
 class TestHybridSearch:
-    def test_illness_policy_returns_relevant_pages(self, handbook_index: HandbookIndex) -> None:
+    def test_illness_policy_returns_relevant_pages(
+        self, handbook_index: HandbookIndex
+    ) -> None:
         results = hybrid_search(handbook_index, "illness policy fever child return")
         assert len(results) > 0
         # Should find pages around 44-46 (illness section)
         pages = {r.page_number for r in results}
-        assert any(40 <= p <= 50 for p in pages), f"Expected illness pages, got: {pages}"
+        assert any(40 <= p <= 50 for p in pages), (
+            f"Expected illness pages, got: {pages}"
+        )
 
     def test_hours_of_operation(self, handbook_index: HandbookIndex) -> None:
-        results = hybrid_search(handbook_index, "hours of operation when does center open close")
+        results = hybrid_search(
+            handbook_index, "hours of operation when does center open close"
+        )
         assert len(results) > 0
 
     def test_enrollment_policy(self, handbook_index: HandbookIndex) -> None:
-        results = hybrid_search(handbook_index, "enrollment how to enroll register child")
+        results = hybrid_search(
+            handbook_index, "enrollment how to enroll register child"
+        )
         assert len(results) > 0
 
     def test_empty_query_returns_results(self, handbook_index: HandbookIndex) -> None:

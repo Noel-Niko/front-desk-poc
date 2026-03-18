@@ -23,15 +23,53 @@ import re
 # Common abbreviations that end with a period but aren't sentence endings.
 # Shared concept with _ABBREVIATIONS in cartesia_tts.py but expanded for
 # streaming context where we see the word just before the period.
-ABBREVIATIONS = frozenset({
-    "mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "ave", "blvd",
-    "dept", "est", "govt", "inc", "ltd", "mgr", "no", "rm", "vs",
-    "approx", "appt", "ext", "misc",
-    "mon", "tue", "wed", "thu", "fri", "sat", "sun",
-    "jan", "feb", "mar", "apr", "jun", "jul", "aug",
-    "sep", "oct", "nov", "dec",
-    "a.m", "p.m",
-})
+ABBREVIATIONS = frozenset(
+    {
+        "mr",
+        "mrs",
+        "ms",
+        "dr",
+        "prof",
+        "sr",
+        "jr",
+        "st",
+        "ave",
+        "blvd",
+        "dept",
+        "est",
+        "govt",
+        "inc",
+        "ltd",
+        "mgr",
+        "no",
+        "rm",
+        "vs",
+        "approx",
+        "appt",
+        "ext",
+        "misc",
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun",
+        "jan",
+        "feb",
+        "mar",
+        "apr",
+        "jun",
+        "jul",
+        "aug",
+        "sep",
+        "oct",
+        "nov",
+        "dec",
+        "a.m",
+        "p.m",
+    }
+)
 
 # Minimum character count before yielding a sentence to TTS
 MIN_CHUNK_LENGTH = 30
@@ -80,13 +118,13 @@ class SentenceSplitter:
                     candidate = self._buffer[:newline_pos].strip()
                     if len(candidate) >= self._min_length:
                         sentences.append(candidate)
-                        self._buffer = self._buffer[newline_pos + 1:]
+                        self._buffer = self._buffer[newline_pos + 1 :]
                         continue
                 break
 
             pos = match.end()
             # candidate includes the punctuation but not the trailing space
-            candidate = self._buffer[:match.start() + 1].strip()
+            candidate = self._buffer[: match.start() + 1].strip()
 
             # Check if the period is part of an abbreviation
             if match.group(1) == ".":
@@ -97,7 +135,9 @@ class SentenceSplitter:
                         break
                     # Extend candidate to next boundary
                     pos = pos + next_match.end()
-                    candidate = self._buffer[:pos - len(next_match.group()) + 1].strip()
+                    candidate = self._buffer[
+                        : pos - len(next_match.group()) + 1
+                    ].strip()
                     # Re-check if this new candidate also ends with abbreviation
                     if self._is_abbreviation(candidate):
                         break
@@ -111,7 +151,9 @@ class SentenceSplitter:
                     if not next_match:
                         break
                     pos = pos + next_match.end()
-                    candidate = self._buffer[:pos - len(next_match.group()) + 1].strip()
+                    candidate = self._buffer[
+                        : pos - len(next_match.group()) + 1
+                    ].strip()
 
             # Only yield if we have enough text
             if len(candidate) >= self._min_length:
@@ -124,7 +166,9 @@ class SentenceSplitter:
                     break
                 # Extend to include next sentence too
                 combined_end = pos + next_match.end()
-                combined = self._buffer[:combined_end - len(next_match.group()) + 1].strip()
+                combined = self._buffer[
+                    : combined_end - len(next_match.group()) + 1
+                ].strip()
                 if len(combined) >= self._min_length:
                     sentences.append(combined)
                     self._buffer = self._buffer[combined_end:]

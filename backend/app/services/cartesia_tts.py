@@ -25,7 +25,21 @@ from fastapi import WebSocket
 logger = logging.getLogger(__name__)
 
 # Abbreviations that should NOT trigger sentence splits
-_ABBREVIATIONS = {"Dr", "Mr", "Mrs", "Ms", "Jr", "Sr", "Prof", "St", "Ave", "vs", "etc", "i.e", "e.g"}
+_ABBREVIATIONS = {
+    "Dr",
+    "Mr",
+    "Mrs",
+    "Ms",
+    "Jr",
+    "Sr",
+    "Prof",
+    "St",
+    "Ave",
+    "vs",
+    "etc",
+    "i.e",
+    "e.g",
+}
 
 
 def strip_markdown(text: str | None) -> str:
@@ -84,7 +98,7 @@ def split_into_sentences(text: str) -> list[str]:
     # Split on sentence boundaries: .!? followed by space/newline or end of string
     # Use negative lookbehind for common abbreviations
     abbr_pattern = "|".join(re.escape(a) for a in _ABBREVIATIONS)
-    sentence_pattern = rf"(?<!{abbr_pattern})(?<=[.!?])\s+"
+    sentence_pattern = rf"(?<!{abbr_pattern})(?<=[.!?])\s+"  # noqa: F841
     # Simpler approach: split on .!? followed by whitespace, then rejoin abbreviations
     # The regex approach for abbreviations is fragile; use a two-pass method instead.
 
@@ -150,7 +164,9 @@ class CartesiaTTSService:
         self._api_key = api_key
         self._voice_id = voice_id
         self._model_id = model_id
-        self._client = None  # TODO: Cartesia WebSocket client (see docs/cartesia_ws_research.md)
+        self._client = (
+            None  # TODO: Cartesia WebSocket client (see docs/cartesia_ws_research.md)
+        )
 
     async def read_response(
         self,
@@ -207,7 +223,9 @@ class CartesiaTTSService:
         # This method will use the Cartesia WebSocket connection with
         # continuation support for natural prosody across sentences.
         """
-        logger.warning("Cartesia SDK integration pending — see docs/cartesia_ws_research.md")
+        logger.warning(
+            "Cartesia SDK integration pending — see docs/cartesia_ws_research.md"
+        )
         return None
 
     async def close(self) -> None:

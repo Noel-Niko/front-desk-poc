@@ -79,7 +79,11 @@ class DeepgramSession:
         """
         try:
             if isinstance(message, ListenV1Results):
-                alt = message.channel.alternatives[0] if message.channel.alternatives else None
+                alt = (
+                    message.channel.alternatives[0]
+                    if message.channel.alternatives
+                    else None
+                )
                 if alt and alt.transcript:
                     event = {
                         "type": "final" if message.is_final else "interim",

@@ -29,7 +29,9 @@ async def lifespan(app: FastAPI):
     settings: Settings = app.state.settings
 
     # ── Startup ─────────────────────────────────────────────────────────
-    logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper(), logging.INFO)
+    )
 
     # 1. Database
     db = Database(settings.database_path)
@@ -44,7 +46,9 @@ async def lifespan(app: FastAPI):
 
     # 3. Handbook RAG index
     logger.info("Loading handbook index...")
-    handbook_index = build_index(settings.handbook_pdf_path, settings.handbook_index_path)
+    handbook_index = build_index(
+        settings.handbook_pdf_path, settings.handbook_index_path
+    )
     app.state.handbook_index = handbook_index
 
     # 4. Anthropic client
@@ -68,7 +72,9 @@ async def lifespan(app: FastAPI):
             voice_id=settings.cartesia_voice_id,
         )
         await tts_service.connect()
-        logger.info("Cartesia TTS session connected (voice: %s)", settings.cartesia_voice_id)
+        logger.info(
+            "Cartesia TTS session connected (voice: %s)", settings.cartesia_voice_id
+        )
     else:
         logger.info("No Cartesia API key — TTS disabled")
     app.state.tts_service = tts_service

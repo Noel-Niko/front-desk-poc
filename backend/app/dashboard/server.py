@@ -6,7 +6,6 @@ Self-contained HTML/CSS/JS served from template.py.
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,7 +24,9 @@ async def lifespan(app: FastAPI):
     """Manage dashboard lifecycle."""
     settings: Settings = app.state.settings
 
-    logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper(), logging.INFO)
+    )
 
     db = Database(settings.database_path)
     await db.connect()

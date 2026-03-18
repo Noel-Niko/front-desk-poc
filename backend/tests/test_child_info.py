@@ -1,11 +1,9 @@
 """Tests for child info queries — exercises the DB + date resolution."""
 
-import asyncio
 
 import pytest
 import pytest_asyncio
 
-from backend.app.config import Settings
 from backend.app.db.database import Database
 from backend.app.db.seed import seed_database
 from backend.app.services.child_info import query_child_info
@@ -65,14 +63,18 @@ class TestQueryChildInfo:
         assert result["data"] == []
 
     @pytest.mark.asyncio
-    async def test_emergency_contacts_includes_doctor(self, seeded_db: Database) -> None:
+    async def test_emergency_contacts_includes_doctor(
+        self, seeded_db: Database
+    ) -> None:
         result = await query_child_info(seeded_db, 1, "emergency_contacts")
         contacts = result["data"]
         relationships = [c["relationship"] for c in contacts]
         assert "Pediatrician" in relationships
 
     @pytest.mark.asyncio
-    async def test_payments_returns_formatted_currency(self, seeded_db: Database) -> None:
+    async def test_payments_returns_formatted_currency(
+        self, seeded_db: Database
+    ) -> None:
         result = await query_child_info(seeded_db, 1, "payments")
         assert result["data"]
         payment = result["data"][0]

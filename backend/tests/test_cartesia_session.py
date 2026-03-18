@@ -34,7 +34,10 @@ class TestCartesiaSessionConnect:
         mock_ws_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_client.tts.websocket_connect.return_value = mock_ws_ctx
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mock_client):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mock_client,
+        ):
             session = CartesiaSession(
                 api_key="test-key",
                 voice_id="test-voice",
@@ -56,7 +59,10 @@ class TestCartesiaSessionConnect:
         mock_ws_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_client.tts.websocket_connect.return_value = mock_ws_ctx
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mock_client):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mock_client,
+        ):
             session = CartesiaSession(api_key="test-key", voice_id="test-voice")
             await session.connect()
             assert session._connection is not None
@@ -113,7 +119,10 @@ class TestCartesiaSessionUtterance:
         mocks = connected_session
         on_audio = AsyncMock()
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mocks["client"]):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mocks["client"],
+        ):
             session = mocks["session_class"](api_key="test-key", voice_id="test-voice")
             await session.connect()
             await session.start_utterance(on_audio)
@@ -131,7 +140,10 @@ class TestCartesiaSessionUtterance:
         mocks = connected_session
         on_audio = AsyncMock()
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mocks["client"]):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mocks["client"],
+        ):
             session = mocks["session_class"](api_key="test-key", voice_id="test-voice")
             await session.connect()
             await session.start_utterance(on_audio)
@@ -148,7 +160,10 @@ class TestCartesiaSessionUtterance:
         mocks = connected_session
         on_audio = AsyncMock()
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mocks["client"]):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mocks["client"],
+        ):
             session = mocks["session_class"](api_key="test-key", voice_id="test-voice")
             await session.connect()
             await session.start_utterance(on_audio)
@@ -163,10 +178,15 @@ class TestCartesiaSessionUtterance:
         """push_sentence() without start_utterance() should be a safe no-op."""
         mocks = connected_session
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mocks["client"]):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mocks["client"],
+        ):
             session = mocks["session_class"](api_key="test-key", voice_id="test-voice")
             await session.connect()
-            await session.push_sentence("Hello.")  # No start_utterance — should not raise
+            await session.push_sentence(
+                "Hello."
+            )  # No start_utterance — should not raise
             await session.close()
 
 
@@ -210,7 +230,10 @@ class TestCartesiaSessionAudioForwarding:
 
         on_audio = AsyncMock()
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mock_client):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mock_client,
+        ):
             session = CartesiaSession(api_key="test-key", voice_id="test-voice")
             await session.connect()
             await session.start_utterance(on_audio)
@@ -258,7 +281,10 @@ class TestCartesiaSessionBargeIn:
 
         on_audio = AsyncMock()
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mock_client):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mock_client,
+        ):
             session = CartesiaSession(api_key="test-key", voice_id="test-voice")
             await session.connect()
             await session.start_utterance(on_audio)
@@ -285,7 +311,10 @@ class TestCartesiaSessionBargeIn:
         mock_ws_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_client.tts.websocket_connect.return_value = mock_ws_ctx
 
-        with patch("backend.app.services.cartesia_session.AsyncCartesia", return_value=mock_client):
+        with patch(
+            "backend.app.services.cartesia_session.AsyncCartesia",
+            return_value=mock_client,
+        ):
             session = CartesiaSession(api_key="test-key", voice_id="test-voice")
             await session.connect()
             await session.cancel_utterance()  # Should not raise

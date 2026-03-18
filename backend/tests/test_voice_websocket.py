@@ -28,6 +28,7 @@ from backend.app.api.websocket import router
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def app_no_deepgram():
     """Minimal app with voice WebSocket router, no Deepgram API key."""
@@ -64,13 +65,15 @@ def app_with_tts():
     app.state.db = mock_db
 
     mock_llm = AsyncMock()
-    mock_llm.chat = AsyncMock(return_value={
-        "message": "Hello from the assistant.",
-        "citations": [],
-        "tool_used": None,
-        "transferred": False,
-        "transfer_reason": None,
-    })
+    mock_llm.chat = AsyncMock(
+        return_value={
+            "message": "Hello from the assistant.",
+            "citations": [],
+            "tool_used": None,
+            "transferred": False,
+            "transfer_reason": None,
+        }
+    )
     app.state.llm_service = mock_llm
 
     mock_tts = AsyncMock()
@@ -83,6 +86,7 @@ def app_with_tts():
 # ---------------------------------------------------------------------------
 # WebSocket endpoint tests
 # ---------------------------------------------------------------------------
+
 
 class TestVoiceWebSocketNoApiKey:
     """Behavior when DEEPGRAM_API_KEY is not configured."""
@@ -110,7 +114,9 @@ class TestVoiceWebSocketWithApiKey:
 
         with (
             patch("backend.app.api.websocket.Settings") as MockSettings,
-            patch("backend.app.api.websocket.DeepgramSession", return_value=mock_session),
+            patch(
+                "backend.app.api.websocket.DeepgramSession", return_value=mock_session
+            ),
         ):
             MockSettings.return_value.deepgram_api_key = "test-key-123"
             client = TestClient(app_with_deepgram)
@@ -142,7 +148,9 @@ class TestVoiceWebSocketWithApiKey:
 
         with (
             patch("backend.app.api.websocket.Settings") as MockSettings,
-            patch("backend.app.api.websocket.DeepgramSession", return_value=mock_session),
+            patch(
+                "backend.app.api.websocket.DeepgramSession", return_value=mock_session
+            ),
         ):
             MockSettings.return_value.deepgram_api_key = "test-key-123"
             client = TestClient(app_with_deepgram)
@@ -163,6 +171,7 @@ class TestVoiceWebSocketWithApiKey:
 # TTS integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestVoiceWebSocketTTS:
     """TTS integration via voice WebSocket."""
 
@@ -175,7 +184,9 @@ class TestVoiceWebSocketTTS:
 
         with (
             patch("backend.app.api.websocket.Settings") as MockSettings,
-            patch("backend.app.api.websocket.DeepgramSession", return_value=mock_session),
+            patch(
+                "backend.app.api.websocket.DeepgramSession", return_value=mock_session
+            ),
         ):
             MockSettings.return_value.deepgram_api_key = "test-key-123"
             client = TestClient(app_with_tts)
@@ -183,12 +194,14 @@ class TestVoiceWebSocketTTS:
             with client.websocket_connect("/api/voice") as ws:
                 ws.receive_json()  # session_start
 
-                ws.send_json({
-                    "type": "config",
-                    "session_id": "tts-test-1",
-                    "tts_enabled": True,
-                    "tts_speed": "fast",
-                })
+                ws.send_json(
+                    {
+                        "type": "config",
+                        "session_id": "tts-test-1",
+                        "tts_enabled": True,
+                        "tts_speed": "fast",
+                    }
+                )
 
                 data = ws.receive_json()
                 assert data["type"] == "config_ack"
@@ -203,7 +216,9 @@ class TestVoiceWebSocketTTS:
 
         with (
             patch("backend.app.api.websocket.Settings") as MockSettings,
-            patch("backend.app.api.websocket.DeepgramSession", return_value=mock_session),
+            patch(
+                "backend.app.api.websocket.DeepgramSession", return_value=mock_session
+            ),
         ):
             MockSettings.return_value.deepgram_api_key = "test-key-123"
             client = TestClient(app_with_tts)
@@ -226,13 +241,16 @@ class TestVoiceWebSocketTTS:
 # DeepgramSession unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestDeepgramSession:
     """Unit tests for the DeepgramSession class."""
 
     @pytest.mark.asyncio
     async def test_connect_uses_async_client_v1_api(self):
         """Should use AsyncDeepgramClient with listen.v1.connect() pattern."""
-        with patch("backend.app.services.deepgram_session.AsyncDeepgramClient") as MockClient:
+        with patch(
+            "backend.app.services.deepgram_session.AsyncDeepgramClient"
+        ) as MockClient:
             mock_connection = AsyncMock()
             mock_connection.start_listening = AsyncMock(return_value=asyncio.Future())
             mock_connection.start_listening.return_value.set_result(None)
@@ -264,7 +282,9 @@ class TestDeepgramSession:
     @pytest.mark.asyncio
     async def test_send_audio_forwards_to_send_media(self):
         """Audio bytes should be forwarded via connection.send_media()."""
-        with patch("backend.app.services.deepgram_session.AsyncDeepgramClient") as MockClient:
+        with patch(
+            "backend.app.services.deepgram_session.AsyncDeepgramClient"
+        ) as MockClient:
             mock_connection = AsyncMock()
             mock_connection.start_listening = AsyncMock(return_value=asyncio.Future())
             mock_connection.start_listening.return_value.set_result(None)
@@ -288,7 +308,9 @@ class TestDeepgramSession:
     @pytest.mark.asyncio
     async def test_close_sends_close_stream_and_cancels_tasks(self):
         """Graceful shutdown: cancel keepalive, send close_stream, exit ctx, cancel listener."""
-        with patch("backend.app.services.deepgram_session.AsyncDeepgramClient") as MockClient:
+        with patch(
+            "backend.app.services.deepgram_session.AsyncDeepgramClient"
+        ) as MockClient:
             mock_connection = AsyncMock()
             mock_connection.start_listening = AsyncMock(return_value=asyncio.Future())
             mock_connection.start_listening.return_value.set_result(None)

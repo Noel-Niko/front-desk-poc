@@ -70,8 +70,13 @@ TOOLS = [
                 "info_type": {
                     "type": "string",
                     "enum": [
-                        "attendance", "meals", "allergies",
-                        "emergency_contacts", "payments", "field_trips", "overview",
+                        "attendance",
+                        "meals",
+                        "allergies",
+                        "emergency_contacts",
+                        "payments",
+                        "field_trips",
+                        "overview",
                     ],
                 },
                 "day_offset": {
@@ -106,7 +111,10 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "reason": {"type": "string", "description": "Why the transfer is needed"},
+                "reason": {
+                    "type": "string",
+                    "description": "Why the transfer is needed",
+                },
             },
             "required": ["reason"],
         },
@@ -182,7 +190,7 @@ class LLMService:
         while response.stop_reason == "tool_use":
             # Extract tool calls
             tool_blocks = [b for b in response.content if b.type == "tool_use"]
-            text_blocks = [b for b in response.content if b.type == "text"]
+            text_blocks = [b for b in response.content if b.type == "text"]  # noqa: F841
 
             # Add assistant message with tool calls to history
             state.messages.append({"role": "assistant", "content": response.content})
@@ -194,28 +202,36 @@ class LLMService:
                 tool_input = tool_block.input
                 tool_used = tool_name
 
-                logger.info("Tool call: %s(%s)", tool_name, json.dumps(tool_input)[:200])
+                logger.info(
+                    "Tool call: %s(%s)", tool_name, json.dumps(tool_input)[:200]
+                )
                 result = await self._execute_tool(state, tool_name, tool_input)
 
                 # Extract citations from handbook results
                 if tool_name == "search_handbook" and isinstance(result, list):
                     for chunk_data in result:
-                        citations.append({
-                            "page": chunk_data["page_number"],
-                            "section": chunk_data["section_title"],
-                            "text": chunk_data["text"][:200],
-                        })
+                        citations.append(
+                            {
+                                "page": chunk_data["page_number"],
+                                "section": chunk_data["section_title"],
+                                "text": chunk_data["text"][:200],
+                            }
+                        )
 
                 # Check for transfer
                 if tool_name == "transfer_to_human":
                     transferred = True
                     transfer_reason = tool_input.get("reason", "Unknown")
 
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_block.id,
-                    "content": json.dumps(result) if not isinstance(result, str) else result,
-                })
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_block.id,
+                        "content": json.dumps(result)
+                        if not isinstance(result, str)
+                        else result,
+                    }
+                )
 
             # Add tool results to history
             state.messages.append({"role": "user", "content": tool_results})
@@ -319,21 +335,27 @@ class LLMService:
 
                     if block.name == "search_handbook" and isinstance(result, list):
                         for chunk_data in result:
-                            citations.append({
-                                "page": chunk_data["page_number"],
-                                "section": chunk_data["section_title"],
-                                "text": chunk_data["text"][:200],
-                            })
+                            citations.append(
+                                {
+                                    "page": chunk_data["page_number"],
+                                    "section": chunk_data["section_title"],
+                                    "text": chunk_data["text"][:200],
+                                }
+                            )
 
                     if block.name == "transfer_to_human":
                         transferred = True
                         transfer_reason = block.input.get("reason", "Unknown")
 
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(result) if not isinstance(result, str) else result,
-                    })
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": json.dumps(result)
+                            if not isinstance(result, str)
+                            else result,
+                        }
+                    )
 
             state.messages.append({"role": "user", "content": tool_results})
 
@@ -346,8 +368,7 @@ class LLMService:
         faq_context = ""
         if faq_rows:
             faq_lines = [
-                f"Q: {row['question_pattern']}\nA: {row['answer']}"
-                for row in faq_rows
+                f"Q: {row['question_pattern']}\nA: {row['answer']}" for row in faq_rows
             ]
             faq_context = (
                 "IMPORTANT — The operator has provided these custom answers. "
@@ -479,9 +500,13 @@ class LLMService:
             child_id = tool_input["child_id"]
             # Enforce security code verification
             if state.verified_child_id is None:
-                return {"error": "Security code not yet verified. Please ask the parent for their 4-digit code."}
+                return {
+                    "error": "Security code not yet verified. Please ask the parent for their 4-digit code."
+                }
             if child_id != state.verified_child_id:
-                return {"error": "This child_id does not match the verified security code."}
+                return {
+                    "error": "This child_id does not match the verified security code."
+                }
             info_type = tool_input["info_type"]
             day_offset = tool_input.get("day_offset", 0)
             return await query_child_info(self._db, child_id, info_type, day_offset)
