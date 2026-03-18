@@ -56,3 +56,16 @@ class TourRequestBody(BaseModel):
     child_age: int | None = None
     preferred_date: str
     notes: str | None = None
+
+
+class RateSessionRequest(BaseModel):
+    """POST /api/sessions/{id}/rate request body."""
+
+    rating: int
+    feedback: str | None = None
+
+
+class EndSessionResponse(BaseModel):
+    """POST /api/sessions/{id}/end response body."""
+
+    summary: str

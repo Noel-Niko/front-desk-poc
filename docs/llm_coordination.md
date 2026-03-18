@@ -37,9 +37,9 @@ Two LLMs are working on this project simultaneously. This document is the **shar
 ### Status
 - [x] Step 1 partial: `cartesia_tts.py` created (strip_markdown, split_into_sentences, CartesiaTTSService skeleton with placeholder `_synthesize_sentence`). 31 tests passing. Wired into `main.py` lifespan.
 - [x] Step 2 partial: `websocket.py` updated — reads `tts_enabled`/`tts_speed` from config, calls `tts_service.read_response()` after text response. Tests passing.
-- [ ] Step 5: Session continuity + ratings — NOT STARTED
-- [ ] Step 6: UI polish — NOT STARTED
-- [ ] Step 7: Enhanced dashboard — NOT STARTED
+- [x] Step 5: Session continuity + ratings — COMPLETE. 10 continuity tests + 8 rating tests + 7 RatingModal tests. Backend: `_get_continuity_context()`, `end_session()` in llm.py, rate/end endpoints in routes.py. Frontend: `RatingModal.tsx`, `endSession()`/`resetSession()` in useChat.ts, `endSession()`/`rateSession()` in api.ts. Total: 170 backend + 36 frontend tests passing.
+- [x] Step 6: UI polish — COMPLETE. End Chat button in Header, RatingModal wiring in App.tsx, mobile reference drawer, scroll-to-bottom button, auto-scroll on loading. 38 frontend tests passing.
+- [x] Step 7: Enhanced dashboard — COMPLETE. Rating analytics (avg_rating, rating_count in stats, distribution chart, citation frequency, low-rating alerts), session filtering (min_rating, transferred_only), new endpoints (/api/rating-distribution, /api/citation-frequency, /api/low-rating-sessions). 176 backend tests passing.
 
 ### Blockers
 (none currently)
@@ -83,11 +83,11 @@ Two LLMs are working on this project simultaneously. This document is the **shar
 | `frontend/src/components/__tests__/Header.test.tsx` | TTS/speed toggle tests |
 
 ### Status
-(LLM B: update this section as you work)
-- [ ] Read this coordination doc
-- [ ] Read existing code: `cartesia_tts.py`, `websocket.py`, `test_tts.py`
-- [ ] CartesiaSession + tests
-- [ ] SentenceSplitter + tests
+- [x] Read this coordination doc
+- [x] Read existing code: `cartesia_tts.py`, `websocket.py`, `test_tts.py`, `llm.py`, `deepgram_session.py`, `config.py`, `useVoice.ts`, `useChat.ts`
+- [x] Research: `cartesia_ws_research.md` created + revised (Cartesia SDK API, Claude streaming, GaplessAudioPlayer, sentence splitting)
+- [x] SentenceSplitter + tests — `backend/app/services/sentence_splitter.py` (32 tests passing). Stateful streaming class with push()/flush(), abbreviation handling, decimal protection, min_length batching.
+- [ ] CartesiaSession + refactor cartesia_tts.py — IN PROGRESS
 - [ ] LLM streaming (`chat_streaming()`) + tests
 - [ ] WebSocket pipeline wiring
 - [ ] Frontend audio playback
@@ -98,7 +98,7 @@ Two LLMs are working on this project simultaneously. This document is the **shar
 - [ ] App.tsx TTS wiring
 
 ### Blockers
-(LLM B: note blockers here)
+(none currently)
 
 ---
 

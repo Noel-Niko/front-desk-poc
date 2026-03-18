@@ -17,7 +17,7 @@ from backend.app.config import Settings
 from backend.app.db.database import Database
 from backend.app.db.seed import seed_database
 from backend.app.services.handbook import build_index
-from backend.app.services.cartesia_tts import CartesiaTTSService
+from backend.app.services.cartesia_session import CartesiaSession
 from backend.app.services.llm import LLMService
 
 logger = logging.getLogger(__name__)
@@ -63,11 +63,12 @@ async def lifespan(app: FastAPI):
     # 6. TTS service (optional — only if Cartesia API key is configured)
     tts_service = None
     if settings.cartesia_api_key:
-        tts_service = CartesiaTTSService(
+        tts_service = CartesiaSession(
             api_key=settings.cartesia_api_key,
             voice_id=settings.cartesia_voice_id,
         )
-        logger.info("Cartesia TTS service initialized (voice: %s)", settings.cartesia_voice_id)
+        await tts_service.connect()
+        logger.info("Cartesia TTS session connected (voice: %s)", settings.cartesia_voice_id)
     else:
         logger.info("No Cartesia API key — TTS disabled")
     app.state.tts_service = tts_service

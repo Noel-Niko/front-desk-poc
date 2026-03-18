@@ -1,6 +1,11 @@
 import { useState, useCallback } from 'react'
 import type { Message, Citation } from '@/types/api'
-import { createSession, sendMessage, verifyCode } from '@/services/api'
+import {
+  createSession,
+  sendMessage,
+  verifyCode,
+  endSession as endSessionApi,
+} from '@/services/api'
 
 interface UseChatReturn {
   messages: Message[]
@@ -12,6 +17,8 @@ interface UseChatReturn {
   send: (text: string) => Promise<void>
   submitCode: (code: string) => Promise<{ verified: boolean; error: string | null }>
   initSession: () => Promise<void>
+  endSession: () => Promise<{ summary: string }>
+  resetSession: () => Promise<void>
   addMessage: (msg: Message) => void
   addCitations: (newCitations: Citation[]) => void
 }
@@ -116,6 +123,26 @@ export function useChat(): UseChatReturn {
     [sessionId],
   )
 
+  const endSession = useCallback(async (): Promise<{ summary: string }> => {
+    if (!sessionId) return { summary: '' }
+    try {
+      const res = await endSessionApi(sessionId)
+      return { summary: res.summary }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to end session')
+      return { summary: '' }
+    }
+  }, [sessionId])
+
+  const resetSession = useCallback(async () => {
+    setMessages([])
+    setCitations([])
+    setChildName(null)
+    setSessionId(null)
+    setError(null)
+    await initSession()
+  }, [initSession])
+
   const addMessage = useCallback((msg: Message) => {
     setMessages((prev) => [...prev, msg])
   }, [])
@@ -124,5 +151,5 @@ export function useChat(): UseChatReturn {
     setCitations((prev) => [...prev, ...newCitations])
   }, [])
 
-  return { messages, citations, sessionId, childName, loading, error, send, submitCode, initSession, addMessage, addCitations }
+  return { messages, citations, sessionId, childName, loading, error, send, submitCode, initSession, endSession, resetSession, addMessage, addCitations }
 }

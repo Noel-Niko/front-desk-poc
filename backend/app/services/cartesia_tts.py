@@ -145,7 +145,7 @@ class CartesiaTTSService:
         self,
         api_key: str,
         voice_id: str,
-        model_id: str = "sonic-2024-12-12",
+        model_id: str = "sonic-3",
     ) -> None:
         self._api_key = api_key
         self._voice_id = voice_id

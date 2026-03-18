@@ -51,3 +51,22 @@ export async function verifyCode(
 export function handbookPageUrl(page: number): string {
   return `${BASE}/handbook/${page}`
 }
+
+export async function endSession(
+  sessionId: string,
+): Promise<{ summary: string }> {
+  return request<{ summary: string }>(`/sessions/${sessionId}/end`, {
+    method: 'POST',
+  })
+}
+
+export async function rateSession(
+  sessionId: string,
+  rating: number,
+  feedback?: string,
+): Promise<{ status: string }> {
+  return request<{ status: string }>(`/sessions/${sessionId}/rate`, {
+    method: 'POST',
+    body: JSON.stringify({ rating, feedback }),
+  })
+}

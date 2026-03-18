@@ -5,9 +5,10 @@ Adapted from the working implementation in poc-deepgram
 
 Key architecture:
   - Uses DeepgramSession for STT (speech-to-text)
-  - Uses CartesiaTTSService for TTS (text-to-speech) when enabled
-  - TTS is toggled per-session via config message (tts_enabled, tts_speed)
+  - Uses CartesiaSession for TTS (text-to-speech) when enabled
+  - LLM streaming: chat_streaming() yields text deltas → SentenceSplitter → CartesiaSession
   - Protocol: tts_start JSON → binary PCM16 frames → tts_end JSON
+  - Barge-in: client sends tts_interrupt, server cancels TTS via asyncio.Event
   - TTS errors never block text response delivery
 """
 
@@ -21,8 +22,10 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.app.config import Settings
 from backend.app.db.database import Database
+from backend.app.services.cartesia_tts import strip_markdown
 from backend.app.services.deepgram_session import DeepgramSession
 from backend.app.services.llm import LLMService
+from backend.app.services.sentence_splitter import SentenceSplitter
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +56,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
     session: DeepgramSession | None = None
     tts_enabled: bool = False
     tts_speed: str = "normal"
+    tts_cancel_event = asyncio.Event()
 
     # Gate: no Deepgram key → send error and close immediately
     if not settings.deepgram_api_key:
@@ -69,10 +73,15 @@ async def voice_websocket(websocket: WebSocket) -> None:
     pending_tasks: list[asyncio.Task] = []
 
     async def process_utterance(text: str) -> None:
-        """Process a completed utterance with the LLM.
+        """Process a completed utterance with streaming LLM + TTS pipeline.
+
+        Pipeline:
+          1. chat_streaming() yields text deltas and tool events
+          2. SentenceSplitter accumulates deltas into sentences
+          3. CartesiaSession synthesizes each sentence (if TTS enabled)
+          4. Audio chunks forwarded as binary WebSocket frames
 
         Runs as a background task so it doesn't block the Deepgram listener.
-        Has its own error handling to prevent silent failures.
         """
         try:
             # Save user message
@@ -81,37 +90,81 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 (session_id, text, datetime.now().isoformat()),
             )
 
-            # Get LLM response
-            result = await llm_service.chat(session_id, text)
+            # Clear cancel event for this utterance
+            tts_cancel_event.clear()
 
-            # Save assistant message
-            citations_json = json.dumps(result["citations"]) if result["citations"] else None
-            await db.insert(
-                """INSERT INTO messages
-                   (session_id, role, content, citations, tool_used, timestamp)
-                   VALUES (?, 'assistant', ?, ?, ?, ?)""",
-                (session_id, result["message"], citations_json,
-                 result["tool_used"], datetime.now().isoformat()),
-            )
+            # Audio callback: forwards Cartesia audio to browser as binary frames
+            async def on_audio_chunk(audio_bytes: bytes) -> None:
+                if not tts_cancel_event.is_set():
+                    await websocket.send_bytes(audio_bytes)
 
-            # Send response to client
-            await websocket.send_json({
-                "type": "response",
-                "text": result["message"],
-                "citations": result["citations"],
-                "tool_used": result["tool_used"],
-                "transferred": result["transferred"],
-                "transfer_reason": result["transfer_reason"],
-            })
+            splitter = SentenceSplitter()
+            tts_active = tts_enabled and tts_service is not None
 
-            # TTS: synthesize and stream audio AFTER text response is sent
-            if tts_enabled and tts_service is not None:
-                try:
-                    await tts_service.read_response(
-                        result["message"], websocket, speed=tts_speed,
-                    )
-                except Exception:
-                    logger.exception("TTS synthesis failed (session: %s)", session_id)
+            if tts_active:
+                await tts_service.start_utterance(on_audio_chunk)
+                await websocket.send_json({"type": "tts_start"})
+
+            # Stream LLM response
+            done_event = None
+            async for event in llm_service.chat_streaming(session_id, text):
+                if tts_cancel_event.is_set() and tts_active:
+                    await tts_service.cancel_utterance()
+                    tts_active = False
+
+                if event["type"] == "text_delta":
+                    # Send progressive text to browser
+                    await websocket.send_json({
+                        "type": "response_delta",
+                        "text": event["text"],
+                    })
+
+                    # Feed to sentence splitter for TTS
+                    if tts_active:
+                        clean_token = strip_markdown(event["text"])
+                        if clean_token:
+                            for sentence in splitter.push(clean_token):
+                                if tts_cancel_event.is_set():
+                                    await tts_service.cancel_utterance()
+                                    tts_active = False
+                                    break
+                                await tts_service.push_sentence(sentence)
+
+                elif event["type"] == "done":
+                    done_event = event
+
+            # Flush remaining text to TTS
+            if tts_active:
+                remainder = splitter.flush()
+                if remainder and not tts_cancel_event.is_set():
+                    await tts_service.push_sentence(remainder)
+                if not tts_cancel_event.is_set():
+                    await tts_service.finish_utterance()
+                else:
+                    await tts_service.cancel_utterance()
+                await websocket.send_json({"type": "tts_end"})
+
+            if done_event:
+                # Save assistant message
+                citations_json = json.dumps(done_event["citations"]) if done_event["citations"] else None
+                await db.insert(
+                    """INSERT INTO messages
+                       (session_id, role, content, citations, tool_used, timestamp)
+                       VALUES (?, 'assistant', ?, ?, ?, ?)""",
+                    (session_id, done_event["full_text"], citations_json,
+                     done_event["tool_used"], datetime.now().isoformat()),
+                )
+
+                # Send final response with metadata
+                await websocket.send_json({
+                    "type": "response",
+                    "text": done_event["full_text"],
+                    "citations": done_event["citations"],
+                    "tool_used": done_event["tool_used"],
+                    "transferred": done_event["transferred"],
+                    "transfer_reason": done_event["transfer_reason"],
+                })
+
         except Exception:
             logger.exception("Error processing utterance: %s", text[:100])
             try:
@@ -184,7 +237,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
             data = await websocket.receive()
 
             if "text" in data:
-                # JSON message (config, etc.)
+                # JSON message (config, tts_interrupt, etc.)
                 msg = json.loads(data["text"])
                 if msg.get("type") == "config":
                     session_id = msg.get("session_id", str(uuid.uuid4()))
@@ -203,6 +256,9 @@ async def voice_websocket(websocket: WebSocket) -> None:
                         "type": "config_ack",
                         "session_id": session_id,
                     })
+                elif msg.get("type") == "tts_interrupt":
+                    tts_cancel_event.set()
+                    logger.info("TTS interrupted by user (session: %s)", session_id)
 
             elif "bytes" in data:
                 # Binary audio data — forward to Deepgram

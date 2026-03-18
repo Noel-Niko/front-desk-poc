@@ -1,7 +1,10 @@
 """Claude Sonnet LLM service with tool_use for the AI Front Desk."""
 
+from __future__ import annotations
+
 import json
 import logging
+from collections.abc import AsyncGenerator
 from datetime import datetime
 
 import anthropic
@@ -40,6 +43,7 @@ CRITICAL RULES:
 
 {faq_overrides_context}
 {child_context}
+{continuity_context}
 """
 
 TOOLS = [
@@ -245,6 +249,94 @@ class LLMService:
             "transfer_reason": transfer_reason,
         }
 
+    async def chat_streaming(
+        self,
+        session_id: str,
+        user_message: str,
+    ) -> AsyncGenerator[dict, None]:
+        """Streaming version of chat() that yields structured events for TTS + UI.
+
+        Handles the tool_use loop internally:
+          1. Stream Claude's response — text_stream yields only text deltas
+          2. If stop_reason == "tool_use", execute tools silently
+          3. Loop back — stream the follow-up response
+          4. If stop_reason == "end_turn", yield done event and break
+
+        Yields:
+            {"type": "text_delta", "text": str}
+            {"type": "tool_call", "name": str}
+            {"type": "done", "full_text": str, "citations": list,
+             "tool_used": str|None, "transferred": bool, "transfer_reason": str|None}
+        """
+        state = self.get_or_create_session(session_id)
+        state.messages.append({"role": "user", "content": user_message})
+        system_prompt = await self._build_system_prompt(state)
+
+        citations: list[dict] = []
+        tool_used: str | None = None
+        transferred = False
+        transfer_reason: str | None = None
+        full_text = ""
+
+        while True:
+            async with self._client.messages.stream(
+                model=self._model,
+                max_tokens=1024,
+                system=system_prompt,
+                tools=TOOLS,
+                messages=state.messages,
+            ) as stream:
+                async for text_chunk in stream.text_stream:
+                    full_text += text_chunk
+                    yield {"type": "text_delta", "text": text_chunk}
+
+                response = await stream.get_final_message()
+
+            if response.stop_reason != "tool_use":
+                state.messages.append({"role": "assistant", "content": full_text})
+                if transferred:
+                    state.transferred = True
+                yield {
+                    "type": "done",
+                    "full_text": full_text,
+                    "citations": citations,
+                    "tool_used": tool_used,
+                    "transferred": transferred,
+                    "transfer_reason": transfer_reason,
+                }
+                break
+
+            # Tool execution phase
+            state.messages.append({"role": "assistant", "content": response.content})
+
+            tool_results = []
+            for block in response.content:
+                if block.type == "tool_use":
+                    tool_used = block.name
+                    yield {"type": "tool_call", "name": block.name}
+
+                    result = await self._execute_tool(state, block.name, block.input)
+
+                    if block.name == "search_handbook" and isinstance(result, list):
+                        for chunk_data in result:
+                            citations.append({
+                                "page": chunk_data["page_number"],
+                                "section": chunk_data["section_title"],
+                                "text": chunk_data["text"][:200],
+                            })
+
+                    if block.name == "transfer_to_human":
+                        transferred = True
+                        transfer_reason = block.input.get("reason", "Unknown")
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": json.dumps(result) if not isinstance(result, str) else result,
+                    })
+
+            state.messages.append({"role": "user", "content": tool_results})
+
     async def _build_system_prompt(self, state: ConversationState) -> str:
         """Build the system prompt with dynamic context."""
         # FAQ overrides
@@ -276,11 +368,93 @@ class LLMService:
                 "ask them to provide their 4-digit security code first."
             )
 
+        # Continuity context (previous session summary)
+        continuity_context = await self._get_continuity_context(state)
+
         return SYSTEM_PROMPT_TEMPLATE.format(
             current_datetime=datetime.now().strftime("%A, %B %d, %Y at %-I:%M %p"),
             faq_overrides_context=faq_context,
             child_context=child_context,
+            continuity_context=continuity_context,
         )
+
+    async def _get_continuity_context(self, state: ConversationState) -> str:
+        """Look up the most recent previous session with the same security code.
+
+        Returns a context string for the system prompt if a previous session
+        with a summary exists within the last 7 days. Returns empty string otherwise.
+        """
+        if state.verified_child_id is None:
+            return ""
+
+        previous = await self._db.fetch_one(
+            """SELECT id, summary, ended_at
+               FROM sessions
+               WHERE child_id = ?
+                 AND id != ?
+                 AND summary IS NOT NULL
+                 AND ended_at >= datetime('now', '-7 days')
+               ORDER BY ended_at DESC
+               LIMIT 1""",
+            (state.verified_child_id, state.session_id),
+        )
+
+        if previous is None:
+            return ""
+
+        return (
+            f"PREVIOUS SESSION CONTEXT: This parent visited recently. "
+            f"Summary of their last visit: {previous['summary']}"
+        )
+
+    async def end_session(self, session_id: str) -> dict:
+        """End a session by generating a Haiku summary of the conversation.
+
+        Returns: {"summary": str}
+        """
+        # Fetch all messages for this session
+        messages = await self._db.fetch_all(
+            "SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp",
+            (session_id,),
+        )
+
+        if not messages:
+            return {"summary": ""}
+
+        # Build conversation text for Haiku summarization
+        conversation_lines = [
+            f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages
+        ]
+        conversation_text = "\n".join(conversation_lines)
+
+        # Call Claude Haiku to summarize
+        response = await self._client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=256,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        "Summarize this childcare front desk conversation in 1-2 sentences. "
+                        "Focus on what was discussed and any actions taken.\n\n"
+                        f"{conversation_text}"
+                    ),
+                }
+            ],
+        )
+
+        summary = ""
+        for block in response.content:
+            if block.type == "text":
+                summary += block.text
+
+        # Update the session in the database
+        await self._db.execute(
+            "UPDATE sessions SET summary = ?, ended_at = ? WHERE id = ?",
+            (summary, datetime.now().isoformat(), session_id),
+        )
+
+        return {"summary": summary}
 
     async def _execute_tool(
         self,
@@ -377,6 +551,22 @@ class LLMService:
 
         state.verified_child_id = child["id"]
         state.verified_child_name = f"{child['first_name']} {child['last_name']}"
+
+        # Link to previous session with the same security code (if any)
+        prev_session = await self._db.fetch_one(
+            """SELECT id FROM sessions
+               WHERE security_code_used = ?
+                 AND id != ?
+                 AND ended_at >= datetime('now', '-7 days')
+               ORDER BY ended_at DESC
+               LIMIT 1""",
+            (code, session_id),
+        )
+        if prev_session is not None:
+            await self._db.execute(
+                "UPDATE sessions SET previous_session_id = ? WHERE id = ?",
+                (prev_session["id"], session_id),
+            )
 
         return {
             "verified": True,

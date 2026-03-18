@@ -67,4 +67,24 @@ export interface ErrorEvent {
   message: string
 }
 
-export type ServerEvent = TranscriptEvent | ResponseEvent | ErrorEvent
+/** TTS events (server → client). */
+export interface ResponseDeltaEvent {
+  type: 'response_delta'
+  text: string
+}
+
+export interface TTSStartEvent {
+  type: 'tts_start'
+}
+
+export interface TTSEndEvent {
+  type: 'tts_end'
+}
+
+export type ServerEvent =
+  | TranscriptEvent
+  | ResponseEvent
+  | ResponseDeltaEvent
+  | TTSStartEvent
+  | TTSEndEvent
+  | ErrorEvent

@@ -68,10 +68,21 @@ def create_app() -> FastAPI:
         return DASHBOARD_HTML
 
     @app.get("/api/sessions")
-    async def list_sessions(request: Request):
-        """List all sessions with basic info."""
+    async def list_sessions(
+        request: Request,
+        min_rating: int | None = None,
+        transferred_only: bool = False,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ):
+        """List sessions with optional filters."""
         service = get_service(request)
-        return await service.list_sessions()
+        return await service.list_sessions(
+            min_rating=min_rating,
+            transferred_only=transferred_only,
+            date_from=date_from,
+            date_to=date_to,
+        )
 
     @app.get("/api/sessions/{session_id}")
     async def get_session(session_id: str, request: Request):
@@ -126,6 +137,24 @@ def create_app() -> FastAPI:
         service = get_service(request)
         await service.delete_faq_override(override_id)
         return {"status": "deleted"}
+
+    @app.get("/api/rating-distribution")
+    async def get_rating_distribution(request: Request):
+        """Get rating distribution (count per 1-5 stars)."""
+        service = get_service(request)
+        return await service.get_rating_distribution()
+
+    @app.get("/api/citation-frequency")
+    async def get_citation_frequency(request: Request):
+        """Get most frequently cited handbook pages."""
+        service = get_service(request)
+        return await service.get_citation_frequency()
+
+    @app.get("/api/low-rating-sessions")
+    async def get_low_rating_sessions(request: Request):
+        """Get sessions rated 2 or below that need attention."""
+        service = get_service(request)
+        return await service.get_low_rating_sessions()
 
     @app.get("/api/tour-requests")
     async def list_tour_requests(request: Request):
