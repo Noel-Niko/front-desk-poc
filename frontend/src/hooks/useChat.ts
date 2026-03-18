@@ -40,7 +40,7 @@ export function useChat(): UseChatReturn {
           id: 'welcome',
           role: 'assistant',
           content:
-            "Hi! I'm Ollie, your AI Front Desk assistant at Sunshine Learning Center. I can help you with center policies, hours, enrollment info, or — if you have a security code — check on your child's day. How can I help you today?",
+            "Hi! I'm Ms. Olivia, your AI Front Desk assistant at Sunshine Learning Center. I can help you with center policies, hours, enrollment info, or — if you have a security code — check on your child's day. How can I help you today?",
           citations: [],
           tool_used: null,
           transferred: false,

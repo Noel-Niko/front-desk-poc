@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Header } from '@/components/Header'
+import { Header, SPEED_PRESETS } from '@/components/Header'
 import { ChatMessage } from '@/components/ChatMessage'
 import { ChatInput } from '@/components/ChatInput'
 import { PinModal } from '@/components/PinModal'
 import { RatingModal } from '@/components/RatingModal'
 import { ReferencePanel } from '@/components/ReferencePanel'
+import OliviaVoiceView from '@/components/OliviaVoiceView'
 import { useChat } from '@/hooks/useChat'
 import { useVoice } from '@/hooks/useVoice'
 import { rateSession } from '@/services/api'
@@ -14,6 +15,8 @@ export default function App() {
   const { messages, citations, sessionId, childName, loading, error, send, submitCode, initSession, endSession, resetSession, addMessage, addCitations } =
     useChat()
   const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [ttsEnabled, setTtsEnabled] = useState(false)
+  const [ttsSpeed, setTtsSpeed] = useState(1.0)
   const [pinOpen, setPinOpen] = useState(false)
   const [pinError, setPinError] = useState<string | null>(null)
   const [pinLoading, setPinLoading] = useState(false)
@@ -56,10 +59,18 @@ export default function App() {
     }
   }, [addMessage, addCitations])
 
+  const handleResponseDelta = useCallback((_text: string) => {
+    // Progressive text updates — could accumulate for streaming display
+    // For now, the full response arrives via handleVoiceResponse
+  }, [])
+
   const voice = useVoice({
     sessionId,
+    ttsEnabled,
+    ttsSpeed,
     onTranscript: handleTranscript,
     onResponse: handleVoiceResponse,
+    onResponseDelta: handleResponseDelta,
   })
 
   useEffect(() => {
@@ -104,6 +115,7 @@ export default function App() {
     if (voiceEnabled) {
       voice.stop()
       setVoiceEnabled(false)
+      setTtsEnabled(false)
     }
     await resetSession()
   }
@@ -112,10 +124,23 @@ export default function App() {
     if (voiceEnabled) {
       voice.stop()
       setVoiceEnabled(false)
+      setTtsEnabled(false)
     } else {
       voice.start()
       setVoiceEnabled(true)
+      setTtsEnabled(true)
     }
+  }
+
+  function handleToggleTTS() {
+    setTtsEnabled((prev) => !prev)
+  }
+
+  function handleCycleSpeed() {
+    setTtsSpeed((prev) => {
+      const idx = SPEED_PRESETS.indexOf(prev)
+      return SPEED_PRESETS[(idx + 1) % SPEED_PRESETS.length]
+    })
   }
 
   async function handleSend(text: string) {
@@ -139,58 +164,72 @@ export default function App() {
     }
   }
 
+  const showOwlView = voiceEnabled && ttsEnabled
+
   return (
     <div className="h-screen flex flex-col">
       <Header
         voiceEnabled={voiceEnabled}
         onToggleVoice={handleToggleVoice}
         onEndChat={handleEndChat}
+        ttsEnabled={ttsEnabled}
+        onToggleTTS={handleToggleTTS}
+        ttsSpeed={ttsSpeed}
+        onCycleSpeed={handleCycleSpeed}
       />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Chat panel */}
         <main className="flex-1 flex flex-col min-w-0">
-          {/* Messages area */}
-          <div ref={messagesContainerRef} className="relative flex-1 overflow-y-auto p-4">
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
-            ))}
+          {/* Messages area — swap between chat messages and owl view */}
+          {showOwlView ? (
+            <OliviaVoiceView
+              voiceState={voice.state}
+              ttsState={voice.ttsState}
+              interimText={voice.interimText}
+            />
+          ) : (
+            <div ref={messagesContainerRef} className="relative flex-1 overflow-y-auto p-4">
+              {messages.map((msg) => (
+                <ChatMessage key={msg.id} message={msg} />
+              ))}
 
-            {loading && (
-              <div className="flex flex-col items-start mb-4">
-                <span className="text-xs font-medium text-blurple mb-1">Ollie</span>
-                <div className="bg-white border border-barnacle rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-blurple rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-blurple rounded-full animate-bounce [animation-delay:0.1s]" />
-                    <span className="w-2 h-2 bg-blurple rounded-full animate-bounce [animation-delay:0.2s]" />
+              {loading && (
+                <div className="flex flex-col items-start mb-4">
+                  <span className="text-xs font-medium text-blurple mb-1">Ms. Olivia</span>
+                  <div className="bg-white border border-barnacle rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-blurple rounded-full animate-bounce" />
+                      <span className="w-2 h-2 bg-blurple rounded-full animate-bounce [animation-delay:0.1s]" />
+                      <span className="w-2 h-2 bg-blurple rounded-full animate-bounce [animation-delay:0.2s]" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {error && (
-              <div className="mx-4 mb-4 p-3 bg-sangria/10 border border-sangria/30 rounded-xl text-sm text-sangria">
-                {error}
-              </div>
-            )}
+              {error && (
+                <div className="mx-4 mb-4 p-3 bg-sangria/10 border border-sangria/30 rounded-xl text-sm text-sangria">
+                  {error}
+                </div>
+              )}
 
-            <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} />
 
-            {/* Scroll to bottom button */}
-            {showScrollBtn && (
-              <button
-                onClick={scrollToBottom}
-                aria-label="Scroll to bottom"
-                className="sticky bottom-2 left-1/2 -translate-x-1/2 z-10 rounded-full bg-blurple px-3 py-1.5 text-xs font-medium text-white shadow-md hover:bg-barney transition-colors"
-              >
-                ↓ New messages
-              </button>
-            )}
-          </div>
+              {/* Scroll to bottom button */}
+              {showScrollBtn && (
+                <button
+                  onClick={scrollToBottom}
+                  aria-label="Scroll to bottom"
+                  className="sticky bottom-2 left-1/2 -translate-x-1/2 z-10 rounded-full bg-blurple px-3 py-1.5 text-xs font-medium text-white shadow-md hover:bg-barney transition-colors"
+                >
+                  ↓ New messages
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Voice status */}
-          {voiceEnabled && (
+          {voiceEnabled && !showOwlView && (
             <div className="px-4 pb-2">
               <div className="flex items-center gap-2 text-sm">
                 <span className={`w-3 h-3 rounded-full ${

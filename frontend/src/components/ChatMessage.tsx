@@ -43,7 +43,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} mb-4`}>
       <span className={`text-xs font-medium mb-1 ${isUser ? 'text-blueberry' : 'text-blurple'}`}>
-        {isUser ? 'You' : 'Ollie'}
+        {isUser ? 'You' : 'Ms. Olivia'}
       </span>
       <div
         data-role={message.role}

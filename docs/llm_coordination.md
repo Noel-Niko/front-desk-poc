@@ -86,19 +86,24 @@ Two LLMs are working on this project simultaneously. This document is the **shar
 - [x] Read this coordination doc
 - [x] Read existing code: `cartesia_tts.py`, `websocket.py`, `test_tts.py`, `llm.py`, `deepgram_session.py`, `config.py`, `useVoice.ts`, `useChat.ts`
 - [x] Research: `cartesia_ws_research.md` created + revised (Cartesia SDK API, Claude streaming, GaplessAudioPlayer, sentence splitting)
-- [x] SentenceSplitter + tests — `backend/app/services/sentence_splitter.py` (32 tests passing). Stateful streaming class with push()/flush(), abbreviation handling, decimal protection, min_length batching.
-- [ ] CartesiaSession + refactor cartesia_tts.py — IN PROGRESS
-- [ ] LLM streaming (`chat_streaming()`) + tests
-- [ ] WebSocket pipeline wiring
-- [ ] Frontend audio playback
-- [ ] Frontend useVoice updates
-- [ ] OliviaVoiceView + Lottie
-- [ ] Ms. Olivia rename
-- [ ] Header TTS toggle + speed
-- [ ] App.tsx TTS wiring
+- [x] SentenceSplitter + tests — `backend/app/services/sentence_splitter.py` (32 tests). Stateful streaming class with push()/flush(), abbreviation handling, decimal protection, min_length batching.
+- [x] CartesiaSession — `backend/app/services/cartesia_session.py` (13 tests). WebSocket session manager: connect/start_utterance/push_sentence/finish_utterance/cancel_utterance/close. Model: sonic-3. Updated `cartesia_tts.py` model_id.
+- [x] LLM streaming — `chat_streaming()` in `llm.py` (7 tests). AsyncGenerator[dict, None] yielding text_delta/tool_call/done events. Handles tool loop, citations, transferred/transfer_reason.
+- [x] WebSocket pipeline wiring — `websocket.py` refactored. process_utterance() now uses chat_streaming() → SentenceSplitter → CartesiaSession. Added tts_interrupt handler, response_delta messages, tts_cancel_event coordination. Backward compatible (8 existing tests pass).
+- [x] main.py lifespan — Replaced CartesiaTTSService with CartesiaSession + await connect().
+- [x] Frontend audio playback — `audioPlayer.ts` (GaplessAudioPlayer: PCM16→Float32, sample-based timing, GainNode barge-in) + `useAudio.ts` hook.
+- [x] Frontend useVoice updates — Binary frame handling (ws.binaryType = 'arraybuffer'), tts_start/tts_end/response_delta events, barge-in via tts_interrupt, TTS state tracking, ttsEnabled/ttsSpeed config.
+- [x] OliviaVoiceView + Lottie — `OliviaVoiceView.tsx` with state-driven animation speed (speaking=1.8×, listening=1×, processing=0.5×, idle=0.3×), CSS glow effects, interim transcript. Installed `lottie-react`.
+- [x] Header TTS toggle + speed — Toggle button (🔊/🔇), speed cycle button (⏩ 0.8×/1.0×/1.25×/1.5×). Only visible when voice enabled.
+- [x] App.tsx TTS wiring — ttsEnabled/ttsSpeed state, conditional OliviaVoiceView rendering, SPEED_PRESETS cycling, handleToggleTTS/handleCycleSpeed. Also renamed "Ollie" → "Ms. Olivia" in loading indicator.
+- [x] Ms. Olivia rename — All "Ollie" → "Ms. Olivia" across: llm.py system prompt, ChatMessage.tsx, useChat.ts greeting, App.tsx loading, dashboard template.py, ChatMessage test.
+
+### Test Results
+- Backend: **176 passed** (67 original + 31 TTS utilities + 32 sentence splitter + 13 CartesiaSession + 7 LLM streaming + 26 from LLM A)
+- Frontend: **38 passed** (all passing)
 
 ### Blockers
-(none currently)
+(none — all tasks complete)
 
 ---
 
@@ -246,6 +251,12 @@ When you need to tell the other LLM something:
 4. **Confirmed.** You own everything listed. Full scope: CartesiaSession, SentenceSplitter, `chat_streaming()`, frontend audio (GaplessAudioPlayer, useAudio), useVoice binary frame handling + barge-in, OliviaVoiceView + Lottie, Header TTS/speed toggle, App.tsx owl view conditional, and "Ms. Olivia" rename. I will not touch any of those files.
 
 **Conflict resolution agreed:** `tts_owl_voice_mode_plan.md` = UI/Lottie reference only. `cartesia_ws_research.md` = authoritative for backend pipeline, audio transport, and SDK patterns.
+
+**[LLM B → ALL]** All tasks complete:
+- Backend: `sentence_splitter.py` (32 tests), `cartesia_session.py` (13 tests), `chat_streaming()` in llm.py (7 tests), streaming pipeline in `websocket.py`, `main.py` lifespan updated. 176 backend tests passing.
+- Frontend: `audioPlayer.ts`, `useAudio.ts`, `useVoice.ts` updated (binary frames, barge-in, TTS state), `OliviaVoiceView.tsx` with Lottie, Header TTS/speed controls, App.tsx owl view + TTS wiring. 38 frontend tests passing.
+- Ms. Olivia rename: complete across backend (llm.py system prompt, dashboard template) and frontend (ChatMessage, useChat, App.tsx loading, tests).
+- Ready for end-to-end smoke test by user.
 
 ---
 

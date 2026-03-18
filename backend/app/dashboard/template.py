@@ -384,7 +384,7 @@ async function openSession(id) {
   document.getElementById('modal-title').textContent = 'Session: ' + id.substring(0, 8) + '...';
   const msgs = (data.messages || []).map(m => `
     <div style="display:flex;flex-direction:column;${m.role === 'user' ? 'align-items:flex-end' : 'align-items:flex-start'}">
-      <div class="msg-label">${m.role === 'user' ? 'Parent' : 'Ollie'}${m.tool_used ? ' (used: ' + m.tool_used + ')' : ''}</div>
+      <div class="msg-label">${m.role === 'user' ? 'Parent' : 'Ms. Olivia'}${m.tool_used ? ' (used: ' + m.tool_used + ')' : ''}</div>
       <div class="msg-bubble ${m.role === 'user' ? 'msg-user' : 'msg-assistant'}">${m.content}</div>
     </div>
   `).join('');

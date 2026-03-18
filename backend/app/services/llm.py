@@ -16,7 +16,7 @@ from backend.app.services.handbook import HandbookIndex, hybrid_search
 logger = logging.getLogger(__name__)
 
 # Module-level constant (acceptable per CLAUDE.md)
-SYSTEM_PROMPT_TEMPLATE = """You are Ollie, the friendly AI Front Desk assistant for Sunshine Learning Center, \
+SYSTEM_PROMPT_TEMPLATE = """You are Ms. Olivia, the friendly AI Front Desk assistant for Sunshine Learning Center, \
 a childcare center powered by BrightWheel.
 
 Current date and time: {current_datetime}

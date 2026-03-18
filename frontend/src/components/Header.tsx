@@ -1,10 +1,24 @@
+const SPEED_PRESETS = [0.8, 1.0, 1.25, 1.5]
+
 interface HeaderProps {
   voiceEnabled: boolean
   onToggleVoice: () => void
   onEndChat?: () => void
+  ttsEnabled?: boolean
+  onToggleTTS?: () => void
+  ttsSpeed?: number
+  onCycleSpeed?: () => void
 }
 
-export function Header({ voiceEnabled, onToggleVoice, onEndChat }: HeaderProps) {
+export function Header({
+  voiceEnabled,
+  onToggleVoice,
+  onEndChat,
+  ttsEnabled = false,
+  onToggleTTS,
+  ttsSpeed = 1.0,
+  onCycleSpeed,
+}: HeaderProps) {
   return (
     <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-barnacle shadow-sm">
       <div className="flex items-center gap-3">
@@ -30,6 +44,37 @@ export function Header({ voiceEnabled, onToggleVoice, onEndChat }: HeaderProps) 
         >
           {voiceEnabled ? '🎙️ Voice' : '⌨️ Text'}
         </button>
+
+        {/* TTS toggle — only visible when voice is enabled */}
+        {voiceEnabled && onToggleTTS && (
+          <button
+            onClick={onToggleTTS}
+            aria-label={ttsEnabled ? 'Disable TTS' : 'Enable TTS'}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              ttsEnabled
+                ? 'bg-blurple text-white'
+                : 'bg-barnacle text-blueberry hover:bg-butterfly'
+            }`}
+          >
+            {ttsEnabled ? '🔊 TTS' : '🔇 TTS'}
+          </button>
+        )}
+
+        {/* Speed toggle — only visible when voice + TTS are enabled */}
+        {voiceEnabled && ttsEnabled && onCycleSpeed && (
+          <button
+            onClick={onCycleSpeed}
+            aria-label={`TTS speed ${ttsSpeed}x`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              ttsSpeed !== 1.0
+                ? 'bg-blurple text-white'
+                : 'bg-barnacle text-blueberry hover:bg-butterfly'
+            }`}
+          >
+            ⏩ {ttsSpeed}×
+          </button>
+        )}
+
         {onEndChat && (
           <button
             onClick={onEndChat}
@@ -43,3 +88,5 @@ export function Header({ voiceEnabled, onToggleVoice, onEndChat }: HeaderProps) 
     </header>
   )
 }
+
+export { SPEED_PRESETS }
