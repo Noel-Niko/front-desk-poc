@@ -94,12 +94,20 @@ async def voice_websocket(websocket: WebSocket) -> None:
             tts_cancel_event.clear()
 
             # Audio callback: forwards Cartesia audio to browser as binary frames
+            audio_chunks_sent = 0
+
             async def on_audio_chunk(audio_bytes: bytes) -> None:
+                nonlocal audio_chunks_sent
                 if not tts_cancel_event.is_set():
                     await websocket.send_bytes(audio_bytes)
+                    audio_chunks_sent += 1
 
             splitter = SentenceSplitter()
             tts_active = tts_enabled and tts_service is not None
+            logger.info(
+                "TTS pipeline: tts_enabled=%s, tts_service=%s, tts_active=%s",
+                tts_enabled, tts_service is not None, tts_active,
+            )
 
             if tts_active:
                 await tts_service.start_utterance(on_audio_chunk)
@@ -137,11 +145,13 @@ async def voice_websocket(websocket: WebSocket) -> None:
             if tts_active:
                 remainder = splitter.flush()
                 if remainder and not tts_cancel_event.is_set():
+                    logger.info("TTS flush remainder: %s", remainder[:80])
                     await tts_service.push_sentence(remainder)
                 if not tts_cancel_event.is_set():
                     await tts_service.finish_utterance()
                 else:
                     await tts_service.cancel_utterance()
+                logger.info("TTS pipeline done: %d audio chunks sent to client", audio_chunks_sent)
                 await websocket.send_json({"type": "tts_end"})
 
             if done_event:

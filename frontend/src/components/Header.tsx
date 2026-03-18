@@ -38,25 +38,25 @@ export function Header({
           aria-label={voiceEnabled ? 'Switch to text input' : 'Switch to voice input'}
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
             voiceEnabled
-              ? 'bg-blurple text-white'
+              ? 'bg-blurple text-white hover:bg-blurple/80'
               : 'bg-barnacle text-blueberry hover:bg-butterfly'
           }`}
         >
-          {voiceEnabled ? '🎙️ Voice' : '⌨️ Text'}
+          {voiceEnabled ? '⌨️ Switch to Text' : '🎙️ Switch to Voice'}
         </button>
 
         {/* TTS toggle — only visible when voice is enabled */}
         {voiceEnabled && onToggleTTS && (
           <button
             onClick={onToggleTTS}
-            aria-label={ttsEnabled ? 'Disable TTS' : 'Enable TTS'}
+            aria-label={ttsEnabled ? 'Turn off speech' : 'Turn on speech'}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               ttsEnabled
-                ? 'bg-blurple text-white'
+                ? 'bg-blurple text-white hover:bg-blurple/80'
                 : 'bg-barnacle text-blueberry hover:bg-butterfly'
             }`}
           >
-            {ttsEnabled ? '🔊 TTS' : '🔇 TTS'}
+            {ttsEnabled ? '🔊 Speech On' : '🔇 Speech Off'}
           </button>
         )}
 

@@ -89,6 +89,19 @@ class CartesiaSession:
         self._connection = await self._ws_ctx_manager.__aenter__()
         logger.info("Cartesia WebSocket connected")
 
+    async def _ensure_connected(self) -> None:
+        """Reconnect if the persistent WebSocket has gone stale."""
+        if self._connection is not None:
+            return
+        if not self._api_key:
+            return
+        logger.info("Cartesia WebSocket reconnecting...")
+        await self.close()
+        self._client = AsyncCartesia(api_key=self._api_key)
+        self._ws_ctx_manager = self._client.tts.websocket_connect()
+        self._connection = await self._ws_ctx_manager.__aenter__()
+        logger.info("Cartesia WebSocket reconnected")
+
     async def start_utterance(
         self,
         on_audio: Callable[[bytes], Awaitable[None]],
@@ -99,15 +112,30 @@ class CartesiaSession:
             on_audio: Async callback invoked with raw PCM16 bytes for each
                       audio chunk. Typically sends to the browser WebSocket.
         """
+        await self._ensure_connected()
         if not self._connection:
+            logger.warning("CartesiaSession: no connection, skipping TTS")
             return
 
         self._on_audio = on_audio
-        self._current_ctx = self._connection.context(
-            model_id=self._model_id,
-            voice={"mode": "id", "id": self._voice_id},
-            output_format=OUTPUT_FORMAT,
-        )
+        try:
+            self._current_ctx = self._connection.context(
+                model_id=self._model_id,
+                voice={"mode": "id", "id": self._voice_id},
+                output_format=OUTPUT_FORMAT,
+            )
+        except Exception:
+            logger.exception("Failed to create Cartesia context, reconnecting")
+            self._connection = None
+            await self._ensure_connected()
+            if not self._connection:
+                return
+            self._current_ctx = self._connection.context(
+                model_id=self._model_id,
+                voice={"mode": "id", "id": self._voice_id},
+                output_format=OUTPUT_FORMAT,
+            )
+        logger.info("Cartesia utterance started")
         # Start receiving audio chunks in background
         self._receive_task = asyncio.create_task(self._receive_loop())
 
@@ -118,7 +146,10 @@ class CartesiaSession:
         context maintains natural prosody across sentences.
         """
         if self._current_ctx:
+            logger.debug("Cartesia push: %s", text[:80])
             await self._current_ctx.push(text)
+        else:
+            logger.warning("push_sentence called with no active context")
 
     async def finish_utterance(self) -> None:
         """Signal no more text for this utterance and wait for audio to drain."""
@@ -173,12 +204,19 @@ class CartesiaSession:
 
     async def _receive_loop(self) -> None:
         """Receive audio chunks from Cartesia and forward via callback."""
+        chunk_count = 0
         try:
             if self._current_ctx and self._on_audio:
                 async for response in self._current_ctx.receive():
-                    if response.audio:
+                    if response.type == "chunk" and response.audio:
+                        chunk_count += 1
                         await self._on_audio(response.audio)
+                    elif response.type == "error":
+                        logger.error("Cartesia error response: %s", response)
+                    # done/flush_done/timestamps are informational, skip
         except asyncio.CancelledError:
             raise
         except Exception:
             logger.exception("Error receiving Cartesia audio")
+        finally:
+            logger.info("Cartesia receive loop done: %d chunks forwarded", chunk_count)

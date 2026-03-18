@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Citation, ServerEvent } from '@/types/api'
 import { useAudio } from '@/hooks/useAudio'
 
@@ -38,8 +38,31 @@ export function useVoice({
   const audioContextRef = useRef<AudioContext | null>(null)
   const audio = useAudio()
 
+  // Keep refs in sync so WebSocket callbacks always see latest values
+  const ttsEnabledRef = useRef(ttsEnabled)
+  ttsEnabledRef.current = ttsEnabled
+  const ttsSpeedRef = useRef(ttsSpeed)
+  ttsSpeedRef.current = ttsSpeed
+  const sessionIdRef = useRef(sessionId)
+  sessionIdRef.current = sessionId
+
+  // Resend config when TTS settings change while WebSocket is connected
+  useEffect(() => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN && sessionId) {
+      ws.send(
+        JSON.stringify({
+          type: 'config',
+          session_id: sessionId,
+          tts_enabled: ttsEnabled,
+          tts_speed: ttsSpeed,
+        }),
+      )
+    }
+  }, [ttsEnabled, ttsSpeed, sessionId])
+
   const start = useCallback(async () => {
-    if (!sessionId) return
+    if (!sessionIdRef.current) return
     setState('connecting')
 
     try {
@@ -63,13 +86,13 @@ export function useVoice({
 
       ws.onopen = () => {
         setState('listening')
-        // Send config message with TTS settings
+        // Send config with latest values via refs (avoids stale closure)
         ws.send(
           JSON.stringify({
             type: 'config',
-            session_id: sessionId,
-            tts_enabled: ttsEnabled,
-            tts_speed: ttsSpeed,
+            session_id: sessionIdRef.current,
+            tts_enabled: ttsEnabledRef.current,
+            tts_speed: ttsSpeedRef.current,
           }),
         )
 
@@ -128,8 +151,8 @@ export function useVoice({
           setState('listening')
         } else if (data.type === 'response') {
           onResponse(data.text, data.citations)
-          // If TTS is not active, transition back to listening
-          if (ttsState === 'idle') {
+          // If TTS didn't activate, go back to listening
+          if (!ttsEnabledRef.current) {
             setState('listening')
           }
         } else if (data.type === 'error') {
@@ -152,7 +175,7 @@ export function useVoice({
     } catch {
       setState('idle')
     }
-  }, [sessionId, ttsEnabled, ttsSpeed, onTranscript, onResponse, onResponseDelta, audio])
+  }, [onTranscript, onResponse, onResponseDelta, audio])
 
   const cleanup = useCallback(() => {
     if (audioContextRef.current) {
