@@ -5,7 +5,7 @@
 
 ---
 
-## What It Is
+## Submission Description
 
 A voice-and-text AI front desk for childcare centers. Parents ask questions via chat or speech; the system answers from a real 56-page handbook (CABQ Family Handbook) using hybrid RAG. Child-specific queries (attendance, meals, allergies) require PIN authentication. Operators get a dashboard showing session logs, system struggles, FAQ overrides, and tour requests.
 
