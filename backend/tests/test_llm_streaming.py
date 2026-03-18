@@ -12,8 +12,6 @@ Tests cover:
 All tests mock the Anthropic SDK — no real API calls.
 """
 
-import json
-from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -156,21 +154,26 @@ class TestChatStreamingWithTools:
 
         # First call: tool_use
         tool_block = _make_tool_use_block(
-            "search_handbook", "tool-1", {"query": "hours"},
+            "search_handbook",
+            "tool-1",
+            {"query": "hours"},
         )
         first_msg = _make_final_message("tool_use", [tool_block])
         first_stream = _make_stream_context([], first_msg)
 
         # Second call: text response
         second_msg = _make_final_message(
-            "end_turn", [_make_text_block("We open at 7am.")],
+            "end_turn",
+            [_make_text_block("We open at 7am.")],
         )
         second_stream = _make_stream_context(["We open at 7am."], second_msg)
 
         client.messages.stream.side_effect = [first_stream, second_stream]
 
         # Mock the handbook search
-        with patch.object(service, "_execute_tool", new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            service, "_execute_tool", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = [
                 {"page_number": 31, "section_title": "Hours", "text": "Open 7am-6pm"},
             ]
@@ -189,21 +192,30 @@ class TestChatStreamingWithTools:
         service, client = llm_service
 
         tool_block = _make_tool_use_block(
-            "search_handbook", "tool-1", {"query": "hours"},
+            "search_handbook",
+            "tool-1",
+            {"query": "hours"},
         )
         first_msg = _make_final_message("tool_use", [tool_block])
         first_stream = _make_stream_context([], first_msg)
 
         second_msg = _make_final_message(
-            "end_turn", [_make_text_block("We open at 7am (p.31).")],
+            "end_turn",
+            [_make_text_block("We open at 7am (p.31).")],
         )
         second_stream = _make_stream_context(["We open at 7am (p.31)."], second_msg)
 
         client.messages.stream.side_effect = [first_stream, second_stream]
 
-        with patch.object(service, "_execute_tool", new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            service, "_execute_tool", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = [
-                {"page_number": 31, "section_title": "Hours", "text": "Open 7am-6pm Monday to Friday."},
+                {
+                    "page_number": 31,
+                    "section_title": "Hours",
+                    "text": "Open 7am-6pm Monday to Friday.",
+                },
             ]
 
             events = []
@@ -222,26 +234,33 @@ class TestChatStreamingWithTools:
         service, client = llm_service
 
         tool_block = _make_tool_use_block(
-            "transfer_to_human", "tool-1", {"reason": "Billing dispute"},
+            "transfer_to_human",
+            "tool-1",
+            {"reason": "Billing dispute"},
         )
         first_msg = _make_final_message("tool_use", [tool_block])
         first_stream = _make_stream_context([], first_msg)
 
         second_msg = _make_final_message(
-            "end_turn", [_make_text_block("Transferring you now.")],
+            "end_turn",
+            [_make_text_block("Transferring you now.")],
         )
         second_stream = _make_stream_context(["Transferring you now."], second_msg)
 
         client.messages.stream.side_effect = [first_stream, second_stream]
 
-        with patch.object(service, "_execute_tool", new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            service, "_execute_tool", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {
                 "status": "Transfer initiated",
                 "reason": "Billing dispute",
             }
 
             events = []
-            async for event in service.chat_streaming("session-1", "I have a billing issue"):
+            async for event in service.chat_streaming(
+                "session-1", "I have a billing issue"
+            ):
                 events.append(event)
 
         done = [e for e in events if e["type"] == "done"][0]
@@ -257,26 +276,37 @@ class TestChatStreamingWithTools:
         # First call: text + tool_use
         text_block = _make_text_block("Let me check.")
         tool_block = _make_tool_use_block(
-            "search_handbook", "tool-1", {"query": "illness policy"},
+            "search_handbook",
+            "tool-1",
+            {"query": "illness policy"},
         )
         first_msg = _make_final_message("tool_use", [text_block, tool_block])
         first_stream = _make_stream_context(["Let me ", "check."], first_msg)
 
         # Second call: final text
         second_msg = _make_final_message(
-            "end_turn", [_make_text_block("Here's the policy.")],
+            "end_turn",
+            [_make_text_block("Here's the policy.")],
         )
         second_stream = _make_stream_context(["Here's the policy."], second_msg)
 
         client.messages.stream.side_effect = [first_stream, second_stream]
 
-        with patch.object(service, "_execute_tool", new_callable=AsyncMock) as mock_exec:
+        with patch.object(
+            service, "_execute_tool", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = [
-                {"page_number": 43, "section_title": "Illness", "text": "Keep home if fever."},
+                {
+                    "page_number": 43,
+                    "section_title": "Illness",
+                    "text": "Keep home if fever.",
+                },
             ]
 
             events = []
-            async for event in service.chat_streaming("session-1", "What's the illness policy?"):
+            async for event in service.chat_streaming(
+                "session-1", "What's the illness policy?"
+            ):
                 events.append(event)
 
         text_deltas = [e for e in events if e["type"] == "text_delta"]

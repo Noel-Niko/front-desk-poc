@@ -7,7 +7,6 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from backend.app.config import Settings
 from backend.app.db.database import Database
 from backend.app.db.seed import seed_database
 from backend.app.dashboard.server import create_app
@@ -55,10 +54,20 @@ async def _seed_rated_sessions(db: Database) -> None:
         "INSERT INTO messages (session_id, role, content, citations, tool_used, timestamp) VALUES (?, 'assistant', ?, ?, 'search_handbook', ?)",
         ("rated-1", "We are open 7am to 6pm.", citations, now.isoformat()),
     )
-    citations2 = json.dumps([{"page": 31, "section": "Hours", "text": "Open 7am-6pm"}, {"page": 43, "section": "Illness", "text": "Fever policy"}])
+    citations2 = json.dumps(
+        [
+            {"page": 31, "section": "Hours", "text": "Open 7am-6pm"},
+            {"page": 43, "section": "Illness", "text": "Fever policy"},
+        ]
+    )
     await db.insert(
         "INSERT INTO messages (session_id, role, content, citations, tool_used, timestamp) VALUES (?, 'assistant', ?, ?, 'search_handbook', ?)",
-        ("rated-2", "Hours are 7am-6pm. Illness policy is on page 43.", citations2, now.isoformat()),
+        (
+            "rated-2",
+            "Hours are 7am-6pm. Illness policy is on page 43.",
+            citations2,
+            now.isoformat(),
+        ),
     )
 
 
@@ -217,10 +226,13 @@ class TestFAQOverridesAPI:
     @pytest.mark.asyncio
     async def test_create_faq_override(self, client) -> None:
         ac, _ = client
-        resp = await ac.post("/api/faq-overrides", json={
-            "question_pattern": "What is your phone number?",
-            "answer": "Our phone number is (505) 555-0100.",
-        })
+        resp = await ac.post(
+            "/api/faq-overrides",
+            json={
+                "question_pattern": "What is your phone number?",
+                "answer": "Our phone number is (505) 555-0100.",
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["id"] is not None
@@ -230,16 +242,22 @@ class TestFAQOverridesAPI:
     async def test_update_faq_override(self, client) -> None:
         ac, _ = client
         # Create first
-        create_resp = await ac.post("/api/faq-overrides", json={
-            "question_pattern": "Test question",
-            "answer": "Test answer",
-        })
+        create_resp = await ac.post(
+            "/api/faq-overrides",
+            json={
+                "question_pattern": "Test question",
+                "answer": "Test answer",
+            },
+        )
         override_id = create_resp.json()["id"]
 
         # Update
-        resp = await ac.put(f"/api/faq-overrides/{override_id}", json={
-            "answer": "Updated answer",
-        })
+        resp = await ac.put(
+            f"/api/faq-overrides/{override_id}",
+            json={
+                "answer": "Updated answer",
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["answer"] == "Updated answer"
 
@@ -247,10 +265,13 @@ class TestFAQOverridesAPI:
     async def test_delete_faq_override(self, client) -> None:
         ac, _ = client
         # Create first
-        create_resp = await ac.post("/api/faq-overrides", json={
-            "question_pattern": "To be deleted",
-            "answer": "Delete me",
-        })
+        create_resp = await ac.post(
+            "/api/faq-overrides",
+            json={
+                "question_pattern": "To be deleted",
+                "answer": "Delete me",
+            },
+        )
         override_id = create_resp.json()["id"]
 
         # Delete

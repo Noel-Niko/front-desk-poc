@@ -60,10 +60,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
 
     # Gate: no Deepgram key → send error and close immediately
     if not settings.deepgram_api_key:
-        await websocket.send_json({
-            "type": "error",
-            "message": "Deepgram API key not configured. Use text input.",
-        })
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "Deepgram API key not configured. Use text input.",
+            }
+        )
         await websocket.close()
         return
 
@@ -106,7 +108,9 @@ async def voice_websocket(websocket: WebSocket) -> None:
             tts_active = tts_enabled and tts_service is not None
             logger.info(
                 "TTS pipeline: tts_enabled=%s, tts_service=%s, tts_active=%s",
-                tts_enabled, tts_service is not None, tts_active,
+                tts_enabled,
+                tts_service is not None,
+                tts_active,
             )
 
             if tts_active:
@@ -122,10 +126,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
 
                 if event["type"] == "text_delta":
                     # Send progressive text to browser
-                    await websocket.send_json({
-                        "type": "response_delta",
-                        "text": event["text"],
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "response_delta",
+                            "text": event["text"],
+                        }
+                    )
 
                     # Feed to sentence splitter for TTS
                     if tts_active:
@@ -151,37 +157,53 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     await tts_service.finish_utterance()
                 else:
                     await tts_service.cancel_utterance()
-                logger.info("TTS pipeline done: %d audio chunks sent to client", audio_chunks_sent)
+                logger.info(
+                    "TTS pipeline done: %d audio chunks sent to client",
+                    audio_chunks_sent,
+                )
                 await websocket.send_json({"type": "tts_end"})
 
             if done_event:
                 # Save assistant message
-                citations_json = json.dumps(done_event["citations"]) if done_event["citations"] else None
+                citations_json = (
+                    json.dumps(done_event["citations"])
+                    if done_event["citations"]
+                    else None
+                )
                 await db.insert(
                     """INSERT INTO messages
                        (session_id, role, content, citations, tool_used, timestamp)
                        VALUES (?, 'assistant', ?, ?, ?, ?)""",
-                    (session_id, done_event["full_text"], citations_json,
-                     done_event["tool_used"], datetime.now().isoformat()),
+                    (
+                        session_id,
+                        done_event["full_text"],
+                        citations_json,
+                        done_event["tool_used"],
+                        datetime.now().isoformat(),
+                    ),
                 )
 
                 # Send final response with metadata
-                await websocket.send_json({
-                    "type": "response",
-                    "text": done_event["full_text"],
-                    "citations": done_event["citations"],
-                    "tool_used": done_event["tool_used"],
-                    "transferred": done_event["transferred"],
-                    "transfer_reason": done_event["transfer_reason"],
-                })
+                await websocket.send_json(
+                    {
+                        "type": "response",
+                        "text": done_event["full_text"],
+                        "citations": done_event["citations"],
+                        "tool_used": done_event["tool_used"],
+                        "transferred": done_event["transferred"],
+                        "transfer_reason": done_event["transfer_reason"],
+                    }
+                )
 
         except Exception:
             logger.exception("Error processing utterance: %s", text[:100])
             try:
-                await websocket.send_json({
-                    "type": "error",
-                    "message": "Failed to process your message. Please try again.",
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": "Failed to process your message. Please try again.",
+                    }
+                )
             except Exception:
                 pass
 
@@ -209,24 +231,32 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 final_parts.clear()
 
                 # Send final transcript to client immediately
-                await websocket.send_json({
-                    "type": "transcript",
-                    "text": full_text,
-                    "is_final": True,
-                })
+                await websocket.send_json(
+                    {
+                        "type": "transcript",
+                        "text": full_text,
+                        "is_final": True,
+                    }
+                )
 
                 # Process LLM in background — don't block Deepgram handler
                 if session_id and full_text.strip():
                     task = asyncio.create_task(process_utterance(full_text))
                     pending_tasks.append(task)
-                    task.add_done_callback(lambda t: pending_tasks.remove(t) if t in pending_tasks else None)
+                    task.add_done_callback(
+                        lambda t: (
+                            pending_tasks.remove(t) if t in pending_tasks else None
+                        )
+                    )
             else:
                 # Interim or non-final confirmed partial — show as interim
-                await websocket.send_json({
-                    "type": "transcript",
-                    "text": transcript,
-                    "is_final": False,
-                })
+                await websocket.send_json(
+                    {
+                        "type": "transcript",
+                        "text": transcript,
+                        "is_final": False,
+                    }
+                )
         except Exception:
             logger.exception("Error in on_transcript callback")
 
@@ -252,7 +282,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 if msg.get("type") == "config":
                     session_id = msg.get("session_id", str(uuid.uuid4()))
                     tts_enabled = msg.get("tts_enabled", False)
-                    tts_speed = msg.get("tts_speed", "normal")
+                    tts_speed = msg.get("tts_speed", "normal")  # noqa: F841
                     # Ensure session exists in DB
                     existing = await db.fetch_one(
                         "SELECT id FROM sessions WHERE id = ?", (session_id,)
@@ -262,10 +292,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
                             "INSERT INTO sessions (id, started_at, input_mode) VALUES (?, ?, 'voice')",
                             (session_id, datetime.now().isoformat()),
                         )
-                    await websocket.send_json({
-                        "type": "config_ack",
-                        "session_id": session_id,
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "config_ack",
+                            "session_id": session_id,
+                        }
+                    )
                 elif msg.get("type") == "tts_interrupt":
                     tts_cancel_event.set()
                     logger.info("TTS interrupted by user (session: %s)", session_id)
@@ -279,10 +311,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
     except Exception:
         logger.exception("Voice WebSocket error")
         try:
-            await websocket.send_json({
-                "type": "error",
-                "message": "Internal server error",
-            })
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "Internal server error",
+                }
+            )
         except Exception:
             pass
     finally:

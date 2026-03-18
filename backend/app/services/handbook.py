@@ -169,7 +169,9 @@ def build_index(pdf_path: str, index_dir: str) -> HandbookIndex:
     # Embed all chunks
     texts = [c.text for c in chunks]
     logger.info("Embedding %d chunks...", len(texts))
-    embeddings = embed_model.encode(texts, normalize_embeddings=True, show_progress_bar=True)
+    embeddings = embed_model.encode(
+        texts, normalize_embeddings=True, show_progress_bar=True
+    )
     embeddings_np = np.array(embeddings, dtype=np.float32)
 
     # Build FAISS index (inner product on normalized vectors = cosine similarity)
@@ -185,8 +187,12 @@ def build_index(pdf_path: str, index_dir: str) -> HandbookIndex:
     index_path.mkdir(parents=True, exist_ok=True)
     faiss.write_index(faiss_index, str(faiss_file))
     chunks_json = [
-        {"chunk_id": c.chunk_id, "text": c.text,
-         "page_number": c.page_number, "section_title": c.section_title}
+        {
+            "chunk_id": c.chunk_id,
+            "text": c.text,
+            "page_number": c.page_number,
+            "section_title": c.section_title,
+        }
         for c in chunks
     ]
     chunks_file.write_text(json.dumps(chunks_json))
@@ -216,11 +222,15 @@ def hybrid_search(
     chunk_map: dict[str, HandbookChunk] = {}
 
     for rank, chunk in enumerate(semantic_results):
-        scores[chunk.chunk_id] = scores.get(chunk.chunk_id, 0) + semantic_weight / (rrf_k + rank + 1)
+        scores[chunk.chunk_id] = scores.get(chunk.chunk_id, 0) + semantic_weight / (
+            rrf_k + rank + 1
+        )
         chunk_map[chunk.chunk_id] = chunk
 
     for rank, chunk in enumerate(bm25_results):
-        scores[chunk.chunk_id] = scores.get(chunk.chunk_id, 0) + bm25_weight / (rrf_k + rank + 1)
+        scores[chunk.chunk_id] = scores.get(chunk.chunk_id, 0) + bm25_weight / (
+            rrf_k + rank + 1
+        )
         chunk_map[chunk.chunk_id] = chunk
 
     sorted_ids = sorted(scores, key=lambda cid: scores[cid], reverse=True)

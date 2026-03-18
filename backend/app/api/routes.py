@@ -119,6 +119,7 @@ async def get_handbook_page(
 ) -> Response:
     """Serve a specific page of the handbook as a PNG image for citation display."""
     from backend.app.config import Settings
+
     settings = Settings()
     pdf_path = settings.handbook_pdf_path
 
@@ -129,7 +130,10 @@ async def get_handbook_page(
     page_count = len(doc)
     if page < 1 or page > page_count:
         doc.close()
-        raise HTTPException(status_code=404, detail=f"Page {page} not found (handbook has {page_count} pages)")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Page {page} not found (handbook has {page_count} pages)",
+        )
 
     pdf_page = doc[page - 1]  # 0-indexed
     pix = pdf_page.get_pixmap(dpi=150)
@@ -188,9 +192,7 @@ async def rate_session(
         raise HTTPException(status_code=422, detail="Rating must be between 1 and 5")
 
     # Verify session exists
-    session = await db.fetch_one(
-        "SELECT id FROM sessions WHERE id = ?", (session_id,)
-    )
+    session = await db.fetch_one("SELECT id FROM sessions WHERE id = ?", (session_id,))
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -209,9 +211,7 @@ async def end_session(
 ) -> EndSessionResponse:
     """End a session, generating a summary via Claude Haiku."""
     # Verify session exists
-    session = await db.fetch_one(
-        "SELECT id FROM sessions WHERE id = ?", (session_id,)
-    )
+    session = await db.fetch_one("SELECT id FROM sessions WHERE id = ?", (session_id,))
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 

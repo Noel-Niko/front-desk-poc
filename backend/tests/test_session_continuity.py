@@ -9,9 +9,8 @@ Tests verify:
 - previous_session_id populated when creating new session with matching security code
 """
 
-import json
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -21,6 +20,7 @@ from backend.app.services.llm import LLMService, ConversationState
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_db():
@@ -60,6 +60,7 @@ def llm_service(mock_client, mock_index, mock_db):
 # ---------------------------------------------------------------------------
 # Continuity context tests
 # ---------------------------------------------------------------------------
+
 
 class TestContinuityContext:
     """Tests for _get_continuity_context()."""
@@ -135,23 +136,31 @@ class TestContinuityContext:
 # end_session tests
 # ---------------------------------------------------------------------------
 
+
 class TestEndSession:
     """Tests for end_session() with Haiku summarization."""
 
     @pytest.mark.asyncio
-    async def test_end_session_calls_haiku_to_summarize(self, llm_service, mock_db, mock_client):
+    async def test_end_session_calls_haiku_to_summarize(
+        self, llm_service, mock_db, mock_client
+    ):
         """end_session should call Claude Haiku to generate a summary."""
         # Setup: session exists with messages
         mock_db.fetch_all.return_value = [
             {"role": "user", "content": "What are your hours?"},
-            {"role": "assistant", "content": "We are open 7am-6pm Monday through Friday."},
+            {
+                "role": "assistant",
+                "content": "We are open 7am-6pm Monday through Friday.",
+            },
         ]
 
         # Mock Haiku response
         mock_response = MagicMock()
         mock_text_block = MagicMock()
         mock_text_block.type = "text"
-        mock_text_block.text = "Parent asked about center hours. Was informed of 7am-6pm M-F schedule."
+        mock_text_block.text = (
+            "Parent asked about center hours. Was informed of 7am-6pm M-F schedule."
+        )
         mock_response.content = [mock_text_block]
         mock_client.messages.create = AsyncMock(return_value=mock_response)
 
@@ -187,18 +196,27 @@ class TestEndSession:
         mock_db.execute.assert_called_once()
         sql_call = mock_db.execute.call_args
         sql = sql_call.args[0] if sql_call.args else sql_call.kwargs.get("sql", "")
-        params = sql_call.args[1] if len(sql_call.args) > 1 else sql_call.kwargs.get("params", ())
+        params = (
+            sql_call.args[1]
+            if len(sql_call.args) > 1
+            else sql_call.kwargs.get("params", ())
+        )
         assert "UPDATE sessions" in sql
         assert "summary" in sql.lower()
         assert "ended_at" in sql.lower()
         assert "test-session-2" in params
 
     @pytest.mark.asyncio
-    async def test_end_session_haiku_prompt_includes_messages(self, llm_service, mock_db, mock_client):
+    async def test_end_session_haiku_prompt_includes_messages(
+        self, llm_service, mock_db, mock_client
+    ):
         """The Haiku prompt should include the conversation messages for context."""
         messages = [
             {"role": "user", "content": "Is Sofia allergic to anything?"},
-            {"role": "assistant", "content": "Sofia has a peanut allergy documented by Dr. Smith."},
+            {
+                "role": "assistant",
+                "content": "Sofia has a peanut allergy documented by Dr. Smith.",
+            },
         ]
         mock_db.fetch_all.return_value = messages
 
@@ -218,7 +236,9 @@ class TestEndSession:
         assert "Sofia" in user_content or "allergic" in user_content
 
     @pytest.mark.asyncio
-    async def test_end_session_returns_empty_summary_when_no_messages(self, llm_service, mock_db, mock_client):
+    async def test_end_session_returns_empty_summary_when_no_messages(
+        self, llm_service, mock_db, mock_client
+    ):
         """If session has no messages, return empty summary without calling Haiku."""
         mock_db.fetch_all.return_value = []
 
@@ -231,6 +251,7 @@ class TestEndSession:
 # ---------------------------------------------------------------------------
 # previous_session_id population tests
 # ---------------------------------------------------------------------------
+
 
 class TestPreviousSessionId:
     """Tests for populating previous_session_id during security code verification."""
@@ -257,7 +278,8 @@ class TestPreviousSessionId:
         # Should have called execute to update previous_session_id
         # (db.execute is called to set previous_session_id on the current session)
         update_calls = [
-            c for c in mock_db.execute.call_args_list
+            c
+            for c in mock_db.execute.call_args_list
             if c.args and "previous_session_id" in c.args[0]
         ]
         assert len(update_calls) == 1
@@ -279,7 +301,8 @@ class TestPreviousSessionId:
         assert result["verified"] is True
         # Should NOT call execute for previous_session_id
         update_calls = [
-            c for c in mock_db.execute.call_args_list
+            c
+            for c in mock_db.execute.call_args_list
             if c.args and "previous_session_id" in str(c.args)
         ]
         assert len(update_calls) == 0

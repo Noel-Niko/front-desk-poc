@@ -1,8 +1,7 @@
 """Tests for the date offset system — written FIRST per TDD."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
-import pytest
 
 from backend.app.services.date_utils import (
     format_date_natural,

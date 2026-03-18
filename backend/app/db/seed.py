@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 from backend.app.config import Settings
 from backend.app.db.database import Database
-from backend.app.services.date_utils import is_weekday, resolve_date
+from backend.app.services.date_utils import is_weekday
 
 logger = logging.getLogger(__name__)
 
@@ -23,96 +23,160 @@ logger = logging.getLogger(__name__)
 CHILDREN = [
     # Caterpillar Room (ages 0-2)
     {
-        "first_name": "Liam", "last_name": "Chen", "age": 1,
-        "classroom": "Caterpillar Room", "teacher_name": "Mrs. Rosa Vasquez",
-        "teacher_role": "Lead Infant Teacher", "room_number": "Rm 101",
-        "security_code": "3847", "enrolled_date": "2025-08-15",
-        "doctor_name": "Dr. Sarah Chen", "doctor_phone": "(505) 555-0201",
+        "first_name": "Liam",
+        "last_name": "Chen",
+        "age": 1,
+        "classroom": "Caterpillar Room",
+        "teacher_name": "Mrs. Rosa Vasquez",
+        "teacher_role": "Lead Infant Teacher",
+        "room_number": "Rm 101",
+        "security_code": "3847",
+        "enrolled_date": "2025-08-15",
+        "doctor_name": "Dr. Sarah Chen",
+        "doctor_phone": "(505) 555-0201",
     },
     {
-        "first_name": "Ava", "last_name": "Patel", "age": 2,
-        "classroom": "Caterpillar Room", "teacher_name": "Mrs. Rosa Vasquez",
-        "teacher_role": "Lead Infant Teacher", "room_number": "Rm 101",
-        "security_code": "6152", "enrolled_date": "2025-07-10",
-        "doctor_name": "Dr. James Whitfield", "doctor_phone": "(505) 555-0202",
+        "first_name": "Ava",
+        "last_name": "Patel",
+        "age": 2,
+        "classroom": "Caterpillar Room",
+        "teacher_name": "Mrs. Rosa Vasquez",
+        "teacher_role": "Lead Infant Teacher",
+        "room_number": "Rm 101",
+        "security_code": "6152",
+        "enrolled_date": "2025-07-10",
+        "doctor_name": "Dr. James Whitfield",
+        "doctor_phone": "(505) 555-0202",
     },
     # Ladybug Room (ages 2-3)
     {
-        "first_name": "Noah", "last_name": "Williams", "age": 3,
-        "classroom": "Ladybug Room", "teacher_name": "Mr. David Okonkwo",
-        "teacher_role": "Lead Toddler Teacher", "room_number": "Rm 102",
-        "security_code": "9283", "enrolled_date": "2025-09-01",
-        "doctor_name": "Dr. Maria Lopez", "doctor_phone": "(505) 555-0203",
+        "first_name": "Noah",
+        "last_name": "Williams",
+        "age": 3,
+        "classroom": "Ladybug Room",
+        "teacher_name": "Mr. David Okonkwo",
+        "teacher_role": "Lead Toddler Teacher",
+        "room_number": "Rm 102",
+        "security_code": "9283",
+        "enrolled_date": "2025-09-01",
+        "doctor_name": "Dr. Maria Lopez",
+        "doctor_phone": "(505) 555-0203",
     },
     {
-        "first_name": "Emma", "last_name": "Jackson", "age": 2,
-        "classroom": "Ladybug Room", "teacher_name": "Mr. David Okonkwo",
-        "teacher_role": "Lead Toddler Teacher", "room_number": "Rm 102",
-        "security_code": "4716", "enrolled_date": "2025-10-15",
-        "doctor_name": "Dr. Sarah Chen", "doctor_phone": "(505) 555-0201",
+        "first_name": "Emma",
+        "last_name": "Jackson",
+        "age": 2,
+        "classroom": "Ladybug Room",
+        "teacher_name": "Mr. David Okonkwo",
+        "teacher_role": "Lead Toddler Teacher",
+        "room_number": "Rm 102",
+        "security_code": "4716",
+        "enrolled_date": "2025-10-15",
+        "doctor_name": "Dr. Sarah Chen",
+        "doctor_phone": "(505) 555-0201",
     },
     {
-        "first_name": "Oliver", "last_name": "Kim", "age": 3,
-        "classroom": "Ladybug Room", "teacher_name": "Mr. David Okonkwo",
-        "teacher_role": "Lead Toddler Teacher", "room_number": "Rm 102",
-        "security_code": "5039", "enrolled_date": "2025-08-20",
-        "doctor_name": "Dr. Priya Sharma", "doctor_phone": "(505) 555-0204",
+        "first_name": "Oliver",
+        "last_name": "Kim",
+        "age": 3,
+        "classroom": "Ladybug Room",
+        "teacher_name": "Mr. David Okonkwo",
+        "teacher_role": "Lead Toddler Teacher",
+        "room_number": "Rm 102",
+        "security_code": "5039",
+        "enrolled_date": "2025-08-20",
+        "doctor_name": "Dr. Priya Sharma",
+        "doctor_phone": "(505) 555-0204",
     },
     # Butterfly Room (ages 3-5)
     {
-        "first_name": "Sofia", "last_name": "Martinez", "age": 4,
-        "classroom": "Butterfly Room", "teacher_name": "Mrs. Elena Rodriguez",
-        "teacher_role": "Lead Pre-K Teacher", "room_number": "Rm 103",
-        "security_code": "7291", "enrolled_date": "2025-09-02",
-        "doctor_name": "Dr. Sarah Chen", "doctor_phone": "(505) 555-0201",
+        "first_name": "Sofia",
+        "last_name": "Martinez",
+        "age": 4,
+        "classroom": "Butterfly Room",
+        "teacher_name": "Mrs. Elena Rodriguez",
+        "teacher_role": "Lead Pre-K Teacher",
+        "room_number": "Rm 103",
+        "security_code": "7291",
+        "enrolled_date": "2025-09-02",
+        "doctor_name": "Dr. Sarah Chen",
+        "doctor_phone": "(505) 555-0201",
     },
     {
-        "first_name": "Ethan", "last_name": "Brooks", "age": 5,
-        "classroom": "Butterfly Room", "teacher_name": "Mrs. Elena Rodriguez",
-        "teacher_role": "Lead Pre-K Teacher", "room_number": "Rm 103",
-        "security_code": "8624", "enrolled_date": "2025-08-25",
-        "doctor_name": "Dr. James Whitfield", "doctor_phone": "(505) 555-0202",
+        "first_name": "Ethan",
+        "last_name": "Brooks",
+        "age": 5,
+        "classroom": "Butterfly Room",
+        "teacher_name": "Mrs. Elena Rodriguez",
+        "teacher_role": "Lead Pre-K Teacher",
+        "room_number": "Rm 103",
+        "security_code": "8624",
+        "enrolled_date": "2025-08-25",
+        "doctor_name": "Dr. James Whitfield",
+        "doctor_phone": "(505) 555-0202",
     },
     {
-        "first_name": "Mia", "last_name": "Thompson", "age": 4,
-        "classroom": "Butterfly Room", "teacher_name": "Mrs. Elena Rodriguez",
-        "teacher_role": "Lead Pre-K Teacher", "room_number": "Rm 103",
-        "security_code": "1357", "enrolled_date": "2025-09-10",
-        "doctor_name": "Dr. Maria Lopez", "doctor_phone": "(505) 555-0203",
+        "first_name": "Mia",
+        "last_name": "Thompson",
+        "age": 4,
+        "classroom": "Butterfly Room",
+        "teacher_name": "Mrs. Elena Rodriguez",
+        "teacher_role": "Lead Pre-K Teacher",
+        "room_number": "Rm 103",
+        "security_code": "1357",
+        "enrolled_date": "2025-09-10",
+        "doctor_name": "Dr. Maria Lopez",
+        "doctor_phone": "(505) 555-0203",
     },
 ]
 
 # ── Meal schedules ──────────────────────────────────────────────────────────
 
 MEALS_SCHEDULE = [
-    ("breakfast", "08:15", [
-        "Oatmeal with fruit, milk",
-        "Scrambled eggs, toast, orange juice",
-        "Whole grain cereal, banana, milk",
-        "Yogurt parfait with granola, apple juice",
-        "Pancakes with blueberries, milk",
-    ]),
-    ("snack_am", "10:00", [
-        "Apple slices with cheese",
-        "Goldfish crackers, water",
-        "Carrot sticks with hummus",
-        "Graham crackers, milk",
-        "String cheese, grapes",
-    ]),
-    ("lunch", "12:00", [
-        "Chicken nuggets, green beans, rice, milk",
-        "Mac and cheese, steamed broccoli, applesauce",
-        "Turkey sandwich, mixed veggies, water",
-        "Spaghetti with meat sauce, garlic bread, milk",
-        "Grilled cheese, tomato soup, fruit cup",
-    ]),
-    ("snack_pm", "15:00", [
-        "Apple slices, cheese crackers",
-        "Celery with peanut butter (allergy-safe: sunbutter)",
-        "Pretzels, juice box",
-        "Trail mix, water",
-        "Banana, vanilla wafers",
-    ]),
+    (
+        "breakfast",
+        "08:15",
+        [
+            "Oatmeal with fruit, milk",
+            "Scrambled eggs, toast, orange juice",
+            "Whole grain cereal, banana, milk",
+            "Yogurt parfait with granola, apple juice",
+            "Pancakes with blueberries, milk",
+        ],
+    ),
+    (
+        "snack_am",
+        "10:00",
+        [
+            "Apple slices with cheese",
+            "Goldfish crackers, water",
+            "Carrot sticks with hummus",
+            "Graham crackers, milk",
+            "String cheese, grapes",
+        ],
+    ),
+    (
+        "lunch",
+        "12:00",
+        [
+            "Chicken nuggets, green beans, rice, milk",
+            "Mac and cheese, steamed broccoli, applesauce",
+            "Turkey sandwich, mixed veggies, water",
+            "Spaghetti with meat sauce, garlic bread, milk",
+            "Grilled cheese, tomato soup, fruit cup",
+        ],
+    ),
+    (
+        "snack_pm",
+        "15:00",
+        [
+            "Apple slices, cheese crackers",
+            "Celery with peanut butter (allergy-safe: sunbutter)",
+            "Pretzels, juice box",
+            "Trail mix, water",
+            "Banana, vanilla wafers",
+        ],
+    ),
 ]
 
 # ── Allergies ───────────────────────────────────────────────────────────────
@@ -192,12 +256,22 @@ PAYMENT_DATA = [
 # ── Field trips ─────────────────────────────────────────────────────────────
 
 FIELD_TRIPS = [
-    (2, "Walking trip to Tiguex Park", "10:00", "11:30",
-     "Butterfly Room, Ladybug Room",
-     "Mrs. Elena Rodriguez, Lead Pre-K Teacher, Rm 103"),
-    (5, "Fire station visit", "09:30", "11:00",
-     "Butterfly Room",
-     "Mrs. Elena Rodriguez, Lead Pre-K Teacher, Rm 103"),
+    (
+        2,
+        "Walking trip to Tiguex Park",
+        "10:00",
+        "11:30",
+        "Butterfly Room, Ladybug Room",
+        "Mrs. Elena Rodriguez, Lead Pre-K Teacher, Rm 103",
+    ),
+    (
+        5,
+        "Fire station visit",
+        "09:30",
+        "11:00",
+        "Butterfly Room",
+        "Mrs. Elena Rodriguez, Lead Pre-K Teacher, Rm 103",
+    ),
 ]
 
 
@@ -205,9 +279,17 @@ async def seed_database(db: Database) -> None:
     """Populate the database with demo data. Idempotent (drops and recreates)."""
     # Clear existing data (reverse FK order)
     for table in [
-        "messages", "sessions", "operator_faq_overrides", "tour_requests",
-        "field_trips", "payments", "emergency_contacts", "allergies",
-        "meals", "attendance", "children",
+        "messages",
+        "sessions",
+        "operator_faq_overrides",
+        "tour_requests",
+        "field_trips",
+        "payments",
+        "emergency_contacts",
+        "allergies",
+        "meals",
+        "attendance",
+        "children",
     ]:
         await db.execute(f"DELETE FROM {table}")  # noqa: S608
 
@@ -221,10 +303,17 @@ async def seed_database(db: Database) -> None:
                 doctor_name, doctor_phone)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                child["first_name"], child["last_name"], child["age"],
-                child["classroom"], child["teacher_name"], child["teacher_role"],
-                child["room_number"], child["security_code"], child["enrolled_date"],
-                child["doctor_name"], child["doctor_phone"],
+                child["first_name"],
+                child["last_name"],
+                child["age"],
+                child["classroom"],
+                child["teacher_name"],
+                child["teacher_role"],
+                child["room_number"],
+                child["security_code"],
+                child["enrolled_date"],
+                child["doctor_name"],
+                child["doctor_phone"],
             ),
         )
         child_ids.append(row_id)
@@ -235,7 +324,9 @@ async def seed_database(db: Database) -> None:
 
     for idx, child_id in enumerate(child_ids):
         child = CHILDREN[idx]
-        teacher_attr = f"{child['teacher_name']}, {child['teacher_role']}, {child['room_number']}"
+        teacher_attr = (
+            f"{child['teacher_name']}, {child['teacher_role']}, {child['room_number']}"
+        )
 
         for day_offset in range(7):
             if not is_weekday(day_offset):
@@ -273,13 +364,22 @@ async def seed_database(db: Database) -> None:
                        (child_id, day_offset, meal_type, scheduled_time,
                         description, recorded_by)
                        VALUES (?, ?, ?, ?, ?, ?)""",
-                    (child_id, day_offset, meal_type, sched_time, desc, cafeteria_staff),
+                    (
+                        child_id,
+                        day_offset,
+                        meal_type,
+                        sched_time,
+                        desc,
+                        cafeteria_staff,
+                    ),
                 )
 
     # ── Allergies ───────────────────────────────────────────────────────
     for child_idx, allergy_list in ALLERGIES.items():
         child = CHILDREN[child_idx]
-        teacher_attr = f"{child['teacher_name']}, {child['teacher_role']}, {child['room_number']}"
+        teacher_attr = (
+            f"{child['teacher_name']}, {child['teacher_role']}, {child['room_number']}"
+        )
         for allergy_type, description, doctor_confirmed in allergy_list:
             await db.insert(
                 """INSERT INTO allergies
@@ -287,8 +387,12 @@ async def seed_database(db: Database) -> None:
                     recorded_by, recorded_date)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (
-                    child_ids[child_idx], allergy_type, description,
-                    doctor_confirmed, teacher_attr, child["enrolled_date"],
+                    child_ids[child_idx],
+                    allergy_type,
+                    description,
+                    doctor_confirmed,
+                    teacher_attr,
+                    child["enrolled_date"],
                 ),
             )
 
@@ -301,8 +405,13 @@ async def seed_database(db: Database) -> None:
                     recorded_by, recorded_date)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    child_ids[child_idx], name, relationship, phone, is_primary,
-                    "Admin Office", CHILDREN[child_idx]["enrolled_date"],
+                    child_ids[child_idx],
+                    name,
+                    relationship,
+                    phone,
+                    is_primary,
+                    "Admin Office",
+                    CHILDREN[child_idx]["enrolled_date"],
                 ),
             )
 
@@ -331,12 +440,16 @@ async def seed_database(db: Database) -> None:
     # ── Sample FAQ overrides ────────────────────────────────────────────
     now_iso = datetime.now().isoformat()
     faq_overrides = [
-        ("What are your hours?",
-         "Sunshine Learning Center is open Monday through Friday, 7:00 AM to 5:30 PM. We are closed on weekends and major holidays.",
-         "Admin"),
-        ("Do you provide lunch?",
-         "Yes! We provide breakfast, morning snack, lunch, and afternoon snack daily. All meals meet USDA nutrition guidelines. Please let us know about any food allergies.",
-         "Admin"),
+        (
+            "What are your hours?",
+            "Sunshine Learning Center is open Monday through Friday, 7:00 AM to 5:30 PM. We are closed on weekends and major holidays.",
+            "Admin",
+        ),
+        (
+            "Do you provide lunch?",
+            "Yes! We provide breakfast, morning snack, lunch, and afternoon snack daily. All meals meet USDA nutrition guidelines. Please let us know about any food allergies.",
+            "Admin",
+        ),
     ]
     for question, answer, created_by in faq_overrides:
         await db.insert(
@@ -361,17 +474,29 @@ async def seed_database(db: Database) -> None:
 
     sample_messages = [
         ("user", "What time does the center open?", None, None),
-        ("assistant",
-         "Sunshine Learning Center opens at 7:00 AM Monday through Friday. We close at 5:30 PM. "
-         "Is there anything else I can help you with?",
-         json.dumps([{"page": 31, "section": "Hours of Operation",
-                       "text": "The center operates Monday-Friday, 7:00 AM to 5:30 PM."}]),
-         "search_handbook"),
+        (
+            "assistant",
+            "Sunshine Learning Center opens at 7:00 AM Monday through Friday. We close at 5:30 PM. "
+            "Is there anything else I can help you with?",
+            json.dumps(
+                [
+                    {
+                        "page": 31,
+                        "section": "Hours of Operation",
+                        "text": "The center operates Monday-Friday, 7:00 AM to 5:30 PM.",
+                    }
+                ]
+            ),
+            "search_handbook",
+        ),
         ("user", "I want to check on my daughter Sofia", None, None),
-        ("assistant",
-         "Of course! To access Sofia's information, I'll need your 4-digit security code. "
-         "Could you please enter it?",
-         None, None),
+        (
+            "assistant",
+            "Of course! To access Sofia's information, I'll need your 4-digit security code. "
+            "Could you please enter it?",
+            None,
+            None,
+        ),
     ]
     for role, content, citations, tool_used in sample_messages:
         ts = (datetime.now() - timedelta(hours=1, minutes=50)).isoformat()

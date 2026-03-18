@@ -32,7 +32,9 @@ async def client(tmp_path):
     await seed_database(db)
     app.state.db = db
 
-    handbook_index = build_index(settings.handbook_pdf_path, settings.handbook_index_path)
+    handbook_index = build_index(
+        settings.handbook_pdf_path, settings.handbook_index_path
+    )
     app.state.handbook_index = handbook_index
 
     # Use a real Anthropic client (the LLM chat tests would need mocking
@@ -70,10 +72,13 @@ class TestVerifyCode:
         session_resp = await client.get("/api/session/new")
         session_id = session_resp.json()["session_id"]
 
-        resp = await client.post("/api/verify-code", json={
-            "session_id": session_id,
-            "code": "7291",  # Sofia Martinez's code
-        })
+        resp = await client.post(
+            "/api/verify-code",
+            json={
+                "session_id": session_id,
+                "code": "7291",  # Sofia Martinez's code
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["verified"] is True
@@ -85,10 +90,13 @@ class TestVerifyCode:
         session_resp = await client.get("/api/session/new")
         session_id = session_resp.json()["session_id"]
 
-        resp = await client.post("/api/verify-code", json={
-            "session_id": session_id,
-            "code": "0000",
-        })
+        resp = await client.post(
+            "/api/verify-code",
+            json={
+                "session_id": session_id,
+                "code": "0000",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["verified"] is False
@@ -100,14 +108,22 @@ class TestVerifyCode:
         session_id = session_resp.json()["session_id"]
 
         for _ in range(3):
-            await client.post("/api/verify-code", json={
-                "session_id": session_id, "code": "0000",
-            })
+            await client.post(
+                "/api/verify-code",
+                json={
+                    "session_id": session_id,
+                    "code": "0000",
+                },
+            )
 
         # 4th attempt should be locked
-        resp = await client.post("/api/verify-code", json={
-            "session_id": session_id, "code": "7291",  # Even correct code
-        })
+        resp = await client.post(
+            "/api/verify-code",
+            json={
+                "session_id": session_id,
+                "code": "7291",  # Even correct code
+            },
+        )
         data = resp.json()
         assert data["verified"] is False
         assert "Too many" in data["error"]

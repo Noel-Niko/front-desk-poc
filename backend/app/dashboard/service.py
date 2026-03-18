@@ -108,7 +108,9 @@ class DashboardService:
             "transferred_count": xfer,
             "transfer_rate": round(xfer / total * 100, 1) if total > 0 else 0,
             "tool_usage": [dict(r) for r in tool_usage],
-            "avg_rating": round(rating_stats["avg_rating"], 1) if rating_stats and rating_stats["avg_rating"] else 0,
+            "avg_rating": round(rating_stats["avg_rating"], 1)
+            if rating_stats and rating_stats["avg_rating"]
+            else 0,
             "rating_count": rating_stats["rating_count"] if rating_stats else 0,
         }
 

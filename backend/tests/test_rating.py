@@ -27,6 +27,7 @@ from backend.app.main import create_app
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest_asyncio.fixture
 async def client(tmp_path):
     """Test client with seeded DB and mocked Anthropic client."""
@@ -39,7 +40,9 @@ async def client(tmp_path):
     await seed_database(db)
     app.state.db = db
 
-    handbook_index = build_index(settings.handbook_pdf_path, settings.handbook_index_path)
+    handbook_index = build_index(
+        settings.handbook_pdf_path, settings.handbook_index_path
+    )
     app.state.handbook_index = handbook_index
 
     mock_client = AsyncMock(spec=anthropic.AsyncAnthropic)
@@ -68,6 +71,7 @@ async def _create_session(client: AsyncClient) -> str:
 # Rate session tests
 # ---------------------------------------------------------------------------
 
+
 class TestRateSession:
     """Tests for POST /api/sessions/{id}/rate."""
 
@@ -76,10 +80,13 @@ class TestRateSession:
         ac, db, _ = client
         session_id = await _create_session(ac)
 
-        resp = await ac.post(f"/api/sessions/{session_id}/rate", json={
-            "rating": 4,
-            "feedback": "Very helpful!",
-        })
+        resp = await ac.post(
+            f"/api/sessions/{session_id}/rate",
+            json={
+                "rating": 4,
+                "feedback": "Very helpful!",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
@@ -97,9 +104,12 @@ class TestRateSession:
         ac, db, _ = client
         session_id = await _create_session(ac)
 
-        resp = await ac.post(f"/api/sessions/{session_id}/rate", json={
-            "rating": 5,
-        })
+        resp = await ac.post(
+            f"/api/sessions/{session_id}/rate",
+            json={
+                "rating": 5,
+            },
+        )
         assert resp.status_code == 200
 
         row = await db.fetch_one(
@@ -114,9 +124,12 @@ class TestRateSession:
         ac, _, _ = client
         session_id = await _create_session(ac)
 
-        resp = await ac.post(f"/api/sessions/{session_id}/rate", json={
-            "rating": 0,
-        })
+        resp = await ac.post(
+            f"/api/sessions/{session_id}/rate",
+            json={
+                "rating": 0,
+            },
+        )
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
@@ -124,24 +137,31 @@ class TestRateSession:
         ac, _, _ = client
         session_id = await _create_session(ac)
 
-        resp = await ac.post(f"/api/sessions/{session_id}/rate", json={
-            "rating": 6,
-        })
+        resp = await ac.post(
+            f"/api/sessions/{session_id}/rate",
+            json={
+                "rating": 6,
+            },
+        )
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_rate_nonexistent_session_returns_404(self, client):
         ac, _, _ = client
 
-        resp = await ac.post("/api/sessions/nonexistent-id/rate", json={
-            "rating": 3,
-        })
+        resp = await ac.post(
+            "/api/sessions/nonexistent-id/rate",
+            json={
+                "rating": 3,
+            },
+        )
         assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
 # End session tests
 # ---------------------------------------------------------------------------
+
 
 class TestEndSession:
     """Tests for POST /api/sessions/{id}/end."""
@@ -158,14 +178,20 @@ class TestEndSession:
         )
         await db.insert(
             "INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, 'assistant', ?, ?)",
-            (session_id, "We are open 7am to 6pm Monday through Friday.", "2025-01-01T10:00:01"),
+            (
+                session_id,
+                "We are open 7am to 6pm Monday through Friday.",
+                "2025-01-01T10:00:01",
+            ),
         )
 
         # Mock Haiku response
         mock_response = MagicMock()
         mock_text_block = MagicMock()
         mock_text_block.type = "text"
-        mock_text_block.text = "Parent asked about center hours. Informed of 7am-6pm M-F schedule."
+        mock_text_block.text = (
+            "Parent asked about center hours. Informed of 7am-6pm M-F schedule."
+        )
         mock_response.content = [mock_text_block]
         mock_client.messages.create = AsyncMock(return_value=mock_response)
 

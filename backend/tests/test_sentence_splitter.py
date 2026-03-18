@@ -12,7 +12,6 @@ sentences for the TTS pipeline. It handles:
 - flush() for remaining text at end of stream
 """
 
-import pytest
 
 from backend.app.services.sentence_splitter import SentenceSplitter
 
@@ -217,8 +216,18 @@ class TestSentenceSplitterStreaming:
     def test_word_by_word_streaming(self):
         s = SentenceSplitter(min_length=10)
         all_sentences = []
-        words = ["Welcome ", "to ", "Sunshine ", "Learning ", "Center. ",
-                 "We ", "are ", "happy ", "to ", "help. "]
+        words = [
+            "Welcome ",
+            "to ",
+            "Sunshine ",
+            "Learning ",
+            "Center. ",
+            "We ",
+            "are ",
+            "happy ",
+            "to ",
+            "help. ",
+        ]
         for word in words:
             all_sentences.extend(s.push(word))
         remaining = s.flush()
