@@ -4,6 +4,14 @@ An AI-powered front desk assistant for **Sunshine Learning Center**, a fictional
 
 Parents can ask about center policies, hours, enrollment, illness rules — or enter a 4-digit security code to check on their child's attendance, meals, allergies, payments, and more. All answers are grounded in the CABQ Family Handbook with page-level citations.
 
+Text — General questions	[youtu.be/_fap9GElVeI](https://www.youtube.com/watch?v=SCRv0cOu8xgyoutu.be/_fap9GElVeI)
+
+Text — Authenticated child queries	[youtu.be/SCRv0cOu8xg](https://www.youtube.com/watch?v=SCRv0cOu8xg)
+
+Voice — Authenticated child queries	[https://youtu.be/qnpO1RSpNmw](https://www.youtube.com/watch?v=qnpO1RSpNmw)
+
+
+
 ## Prerequisites
 
 - **Python 3.11+** and [uv](https://docs.astral.sh/uv/getting-started/installation/)
