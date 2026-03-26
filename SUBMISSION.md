@@ -1,7 +1,5 @@
-# AI Front Desk — Submission
+# AI Front Desk — Description
 
-**To:** Waqas Ahmed, CTO at brightwheel
-**From:** Noel Nosse
 
 ---
 
